@@ -1,0 +1,89 @@
+# Mathematical modeling Assignment 1
+
+##Packages needed for this assignment
+```{r}
+
+library("Ryacas")
+library("deSolve")
+```
+
+**Part1**
+
+#Finding body temperature for squirrel
+
+According to heat flux equation, the equilibrium body temperature is the total heat that flows in the organism is equal to the heat flowing out of organism. So, in simple way the metabolic heat and the sun heat are the two factors responsible for heating squirrel and the cooling factors depends on body temperature, air temperature and convective heat transfer coefficient (ignoring the squirrel self mechanism of cooling off). So the flux should be total heat in minus the total heat out
+```{r}
+## Defining the equation
+f = "(M + q) - h*(b-a)"
+
+##Making equation into yac object.
+F = ysym(f)
+
+##Solve for b
+be= solve(F,'b')
+print(be)
+```
+
+
+**Part2**
+
+#Maximum solar radiation squirrel can handle
+
+```{r}
+#Using the same equation from above and solving it for q
+qe <- solve(F,'q')
+#Setting values of variables
+h=50; a=18; b=40; M=120
+
+#Maximum solar radiation squirrel can handle at given set of variables
+qe %>% y_rmvars%>% as_r%>% eval
+
+#Different values of b
+b <- c(0,10,20,30,40,50)
+
+#Values of solar radiation
+Solar_radiation <- qe %>% y_rmvars%>% as_r%>% eval
+print(Solar_radiation)
+
+#Plot a graph of body temperature versus Solar radiation
+plot(b~Solar_radiation,type="l") + abline(h = 40, col = "purple") + abline(v = 980, col = "violet")
+```
+
+**Part3**
+
+#Numerical analysis
+
+Based on the graph it seems that squirrel reaching the to an equilibrium state much faster than lizard. The main reason according to me is I guess the metabolic rate and weight of the animal.
+```{r}
+#Numerical analysis for lizard
+lizard.dl<-function(times,y,parms){
+with(as.list(c(y, parms)), {
+dl<-(q-h*(b-a))/w
+list(dl)
+})
+}
+t<-seq(from=0,to=1,length.out=30)
+b0 <-c(b=34)
+parms<-c(a=16,h=50,q=800,w=10)
+lizard_output<-ode(times=t,y=b0,func=lizard.dl,parms=parms)
+print(lizard_output)
+
+#Numerical analysis for squirrel
+squirrel.ds<-function(times,y,parms){
+with(as.list(c(y, parms)), {
+ds<-(M+q-h*(b-a))/w
+list(ds)
+})
+}
+t<-seq(from=0,to=1,length.out=30)
+b0 <-c(b=34)
+parms<-c(a=16,h=50,q=800,w=500,M=120)
+squirrel_output<-ode(times=t,y=b0,func=lizard.dl,parms=parms)
+print(squirrel_output)
+
+#Plotting graph for both squirrel and lizard
+plot(lizard_output[,1],lizard_output[,2],type="b",ylab="Body temperature",xlab="Time (hrs)")
+lines(squirrel_output[,1],squirrel_output[,2],col="green")
+legend(x=0.5,y=33.5,legend=c("lizard","squirrel"),col=c("black","green"),lty=c(1,1))
+
+```
