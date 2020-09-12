@@ -1,0 +1,204 @@
+---
+output: html_document
+---
+# Mathematical Modeling Assignment 2
+
+#title: "Sheth_Volkel_Assignment2"
+
+#author: "Vyoma and Shea"
+
+#date: "9/9/2020"
+
+#output: pdf_document
+
+
+# ```{r setup, include=FALSE}
+# knitr::opts_chunk$set(echo = TRUE)
+# knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+# Workplan
+We each first reviewed the content of the assignment independently to gauge our individual understanding of the concepts and expectations of the assignment and to prepare for collaborating to complete it together. We used MS Teams to meet virtually to discuss the assignment and used screen sharing to work on the code aspect. Shea took responsibility for typing up R markdown file. Vyoma uploaded the file to github after making modifications to the file and we pulled the file to make any necesary changes to the assignment before submitting. 
+
+# Assignment 2
+
+##The models for a sit-and-wait predator are more complicated than for a searching predator. This is because we have to derive expressions for the reaction distance of the predator (treated as the viewable semi-circle) and the entry of prey into that zone. Since R is not ideal for integration, we will use Roughgarden’s solutions for tw and tp on page 43 and 44 respectively.
+
+# Part 1
+
+##Use these equations and the analysis we did in class as a model, recreate figure 2.7 in R using the same parameter values as in Roughgarden. Include the 2 curves, the straight lines are not necessary. In words explain this plot and why it is informative biologically.
+
+# Equation for average waiting time of sit and wait predator, tw: 
+
+**tw = 2/(a * pi * rc^2)**
+
+a = abundance of prey per time per area;
+pi = 3.14...;
+rc = radius of semicircle
+
+# Equation for average pursuit time of sit and wait predator, tp: 
+
+**tp = 4/3 * (rc/v)**
+
+v = predator velocity 
+
+# Equation for total time predator spends per prey item, ti: 
+
+**ti = tw + tp**
+
+**ti = 2/(a * pi * rc^2) + 4/3 * (rc/v)**
+
+# Equation for average energy per prey item: 
+
+**ei =  e - 2 * ew/(a * pi * rc^2) - 4/3 * (ep * rc)/v**
+
+e = energy per prey item;
+ew = energy expenditure per unit waiting time;
+ep = energy expenditure per unit pursuit time;
+
+# Expression for average energy per time, et: 
+
+**et = ei/ti**
+
+**et = (e - 2 * ew/(a * pi * rc^2) - 4/3 * (ep*rc)/v)/(2/(a * pi * rc^2) + 4/3 * rc/v)**
+
+Alright, now let's define this in the code. Let's first define all the parameter values. 
+```{r}
+e <- 10
+ew <- 0.1
+ep <- 1
+v <- 0.5
+rc <- seq(0.005, 4.000, 0.005)
+a1 <- 0.005
+
+tw1 <- 2/(a1 * pi * rc^2)
+tp <- 4/3 * (rc/v)
+ti1 <- tw1 + tp
+
+ei1 <- e - 2 * ew/(a1 * pi * rc^2) - 4/3 * (ep * rc)/v
+
+et1 <- ei1/ti1
+
+a2 <- 0.02
+
+tw2 <- 2/(a2 * pi * rc^2)
+tp <- 4/3 * (rc/v)
+ti2 <- tw2 + tp
+
+ei2 <- e - 2 * ew/(a2 * pi * rc^2) - 4/3 * (ep * rc)/v
+
+et2 <- ei2/ti2
+
+```
+
+Now let's recreate the Figure 2.7 plot. 
+```{r}
+plot(et2~rc, type = "l", main = "Sit-and-Wait Forager", ylab = "Energy/Time (J/s)", xlab = "Cutoff distance (m)", lty = 2)
+lines (et1~rc)
+legend("topright", c("a = 0.005", "a = 0.02"), lty = c(1, 2), cex = 0.8)
+```
+At both levels of prey avaiability, a sit-and-wait predator's energy/time is optimized with a moderate sized attack radius (around roughly 2 to 2.5 m in this case), and having too small or too big of a radius becomes more costly than beneficial (-energy/time). In the case of less prey availability the predators attack radius has to be slightly larger for them to optimize energy/time. Though no matter the predator's attack radius in this case, the predator will have a higher energy/time if there is more prey available than less prey available (at least with the parameter values chosen here).
+
+# Part 2
+
+##Use R to rewrite and run the bumblebee function in section 2.4, p 53-54. Produce Figure 2.10. 
+
+The output of the function should be a vector of the net energy intake rate. 
+```{r}
+two1 <- function(P, eb, ew, ef, ee, tb, tw, tf, te, n){
+  netE <<- c(); # vector empty for net energy, double arrow to save in workspace
+  sumi <- 0 # baseline value added to caloric reward equation for first flower
+  for(i in 1:n){
+    sumi <- sumi + (-1.7 * i + 20.19) # total caloric reward after each iteration
+    net <- (P * sumi - eb - P * ew * (i -1) - P * i * ef - ee * (1 - P))/(tb + P * tw * (i - 1) + P * i * tf + te * (1-P)) # net energy, for each iteration
+    netE[i] <<- net # net energy saved into vector of net energy
+  }
+}
+```
+
+Now add the parameter values to the function.
+```{r}
+P <- 0.375 # probability plant hasn't already been drained of nectar
+eb <- 0.09 # energy spent flying between plants
+ew <- 0.07 # energy needed to get between flowers on same plant
+ef <- 0.02 # energy cost of emptying "full" flowers
+ee <- 0.01 # energy cost of sampling "empty" flowers
+tb <- 4.4 # time spent flying between plants
+tw <- 3.3 # time needed to get between flowers on same plant
+tf <- 14.7 # time cost of emptying "full" flowers
+te <- 8.9 # time cost of sampling "empty" flowers
+n <- 10 # last flower position visited by the bee
+
+two1(P, eb, ew, ef, ee, tb, tw, tf, te, n)
+```
+
+Okay, now let's recreate the Figure 2.10 from the book.
+```{r}
+netE_original <- netE
+plot(netE_original~c(1:10), type = "l", ylab = "Net energy intake rate (calories/second)", xlab = "Last flower position visited")
+axis(side=1,at=c(1,3,5,7,9))
+```
+
+ 
+# Part 2.1
+
+##Now imagine bees in two other areas. In one area the plants grow more densely than in the situation you have already modeled. Change 1 parameter that would represent this situation and explain why you chose that parameter. How does that change the number of flowers visited on a plant? Does it take a large change in the parameter chosen to change the number flowers visited?
+
+**If plants grow more densely together, then the energy (eb) and/or time spent flying between the plants (tb) is likely to decrease. However, we must pick only one of these parameters to vary. Let's assume energy doesn't vary too much if we assume most of the energy a bee spends switching between plants is on taking off to fly rather than maintaining flight to get to another plant. Therefore, let's vary the time parameter instead and assume it will just take less time to get between plants if they are closer together.** 
+
+**Intuitively, we can predict that the bee with have a higher energy intake if takes less time to move between flowers, and it can probably energetically afford to visit a few more plants (and more flowers). Though it might also be able to visit less flowers and max out it's energy intake sooner. Since tb is in the denominator of our equation, that checks out mathematically as well. Let's check visually through plotting as well. Also, let's give the parameter multiple values and compared it to the orginal to see how sensitive our equation is to changes in the size of the tb parameter.** 
+
+```{r}
+tb_ops <- seq(4.4, 0, -1) # several parameter values for tb
+netE_res <- NULL
+for(i in 1:length(tb_ops)){
+  two1(P, eb, ew, ef, ee, tb_ops[i], tw, tf, te, n)
+  netE_res[[i]] <- netE
+}
+```
+
+Plot results.
+```{r}
+plot(netE_res[[1]]~c(1:10), type = "l", ylab = "Net energy intake rate (calories/second)", xlab = "Last flower position visited", ylim = c(0.45,0.75))
+axis(side=1,at=c(1,3,5,7,9))
+axis(side=2,at=c(0.5,0.6,0.7))
+
+colors <- c("red", "blue", "magenta", "orange")
+for(i in 2:5){
+  lines(netE_res[[i]]~c(1:10), col = colors[i-1])
+}
+
+legend("topright", c("0.4", "1.4", "2.4", "3.4", "4.4"), lty = 1, col = c("orange", "magenta", "blue", "red", "black"), cex = 0.7, title = "tb, seconds")
+```
+**As time between plants decreases, net energy is higher among all flower positions. However, at which flower position net energy is optimized is the same (the 4th position) in most cases until time between plants gets very close to 0 seconds (then net energy is reached after visiting only three flowers). Therefore, although the amount of time effects the overall net energy intake, the pattern is not that sensitive to the tb parameter unless there is a large change in value.**
+
+# Part 2.2
+
+##Imagine a second set of meadows where flowers have less nectar due to drier conditions. Choose 1 parameter to change to represent this situation. How does that change the number of flowers visited on a plant? Does it take a large change in that parameter to change the number of flowers visited? Use equations and/or plots to support your answers.**
+
+**If drier conditions have led to flowers having less nectar, some flowers may have so little nectar that it is as if they have already been drained. Therefore, it is likely that the probably a plant hasn't already been drained, the P parameter, is lower than the original scenario. Intuitively, I would expect this to result in lower net energy intake, but how it will influence the amount of flowers visited may be a trade off as not visiting enough not drained flowers will not optimize energy intake, but it's also more costly to visit more flowers if more of them are already drained. The equation isn't straightforward either as P is in both the numerator and denominator several times. So let's try to visualize it graphically.** 
+
+First, let's get a set of P values and plug them into the function. 
+```{r}
+P_ops <- seq(0.375, 0, -0.025) # several parameter values for tb
+netE_res2 <- NULL
+for(i in 1:length(P_ops)){
+  two1(P_ops[i], eb, ew, ef, ee, tb, tw, tf, te, n)
+  netE_res2[[i]] <- netE
+}
+```
+
+Plot results. 
+```{r}
+plot(netE_res2[[1]]~c(1:10), type = "l", ylab = "Net energy intake rate (calories/second)", xlab = "Last flower position visited")
+axis(side=1,at=c(1,3,5,7,9))
+
+colors <- rainbow(6)
+for(i in 2:7){
+  lines(netE_res2[[i]]~c(1:10), col = colors[i-1])
+}
+
+legend("topright", c("0.375", "0.350", "0.325", "0.300", "0.275", "0.250", "0.225"), lty = 1, col = c("black", colors), cex = 0.5, title = "P")
+```
+**As expected, net energy intake decreases across the board when the probability of a flower not already being drained is reduced. Also, the amount of flowers visited for net energy intake optimization increases with even small changes in parameter P, with for instance only a 0.050 reduction in P leading to needing to visit 5 flowers instead of 4 flowers to optimize energy intake (and only a 0.150 decrease to make it 6 flowers). The equation and number of flowers visited is much more sensitive to small changes in this parameter than the previous paramter. Bees are going to have to visit more flowers to optimize energy intake under drought conditions, but this is going to cost them more energy and lead to lower net energy intake than under regular conditions.**  
+
