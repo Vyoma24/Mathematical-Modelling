@@ -12,9 +12,9 @@ output: html_document
 #output: pdf_document
 
 
-# ```{r setup, include=FALSE}
-# knitr::opts_chunk$set(echo = TRUE)
-# knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
 ```
 
 # Workplan
