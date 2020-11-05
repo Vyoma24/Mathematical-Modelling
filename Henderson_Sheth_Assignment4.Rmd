@@ -1,0 +1,260 @@
+---
+title: "Henderson_Sheth_Assignment4"
+output:
+  html_document:
+    df_print: paged
+  fig_caption: true 
+  keep_tex: true 
+  latex_engine: pdflatex
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=75),tidy=TRUE)
+
+```
+
+## R Markdown
+
+```{r packages}
+library(Ryacas)
+library(deSolve)
+library(mosaicCalc)
+library(latexpdf)
+```
+
+**Question 1: Workplan (3 pts)
+Describe your workplan for this assignment. Have you changed anything from the first group assignment?**
+We both looked at the assignment on our own, tried to have a clear understanding of each question and then discussed our ideas on MS teams by sharing the screen.We both worked equally in writing the code for the assignment and answering questions. We sent eachother the updated versions of the Rmd file to make changes as per one's convenience.
+
+**Question 2: Natural selection (10 pts) 
+In class we examined a situation where survival varied linearly with climate change; one homozygote saw a decrease in survival while the heterozygote and other homozygote had increased survival as the climate changed.**
+
+
+*Equation for Number of Homozygous zygotes*
+
+$A_1A_1 = p^2N$
+
+*Fraction of A_1 in gene pool is calculated by*
+
+$p_{t+1} = \frac{A_1 alleles at t + 1} {total allels at t + 1}$
+
+*Substituting with the values in equation*
+
+$p_{t+1}= \frac{2m_11l_11p^2_tN_t + (1/2)2m_12l_12 (2p_tq_t)N_t} {2m_11l_11p^2_tN_t + 2m_12l_12 (2p_tq_t)N_t + 2m_22l_22q^2_tN_t}$
+
+*To sort out the equation alittle more we can use product of m and l as one*
+
+$W = m*l$
+
+*Equation after sorting out above fraction of genepool equation*
+
+$p_{t+1}= \frac{W_{11}p_t + W_{12}q_t} {W_{11}p_t^2 + W_{12}2p_tq_t + W_{22}q_t^2} p_t$
+
+Defining the code for natural selection assuming that alleles for l are co-dominant.
+```{r naturalselection}
+t<-seq(0,50,by=.01)
+l11 = expression(-1/2000*(t-25)^2+0.6)
+l12 = expression(-1/1800*(t-30)^2+0.7) #Heterozygote of codominant alleles is intermediate
+l22 = expression(-1/1600*(t-35)^2+0.8)
+plot(eval(l11)~t,type="l",ylim=c(0,1), col="red", xlab = "Time",ylab = "Survival", main = "Survival vs Time in generations")
+lines(eval(l12)~t, col="orange")
+lines(eval(l22)~t, col="blue")
+legend(x=20,y=0.2,legend=c("l11","l12","l22"),text.col=c("red","orange","blue"),lty=1,col=c("red","orange","blue"))
+```
+
+As evidenced by the this graph, the survival of $A_1A_1$ genotype over time increases at first but after 12 generations survival decreases. At higher temperatures, the A2A2 genotype increases survival more than the A1A1 genotype, with the heterozygote A1A2 being intermediate (as was interpreted above). However, even the A2A2 genotype maximizes survival between 34 and 38 generations, and survival begins to decrease there after.
+
+As the survival of $A_2A_2$ over time is more than that of $A_1A_1$, $A_2A_2$ is getting fitter and it will have average fitness of 1 and the other allele $A_1A_1$ will have 1-s, where s is the strength of natural selection. So let's write the code for the it.
+
+##First, define the parameters
+```{r co-dominance}
+#co-dominance
+m <- 2
+p <- 1500/2000
+n <- 2000
+w = 1
+s <- c(1, 0.5, 0.25, 0.1, 0.05, 0.025)
+time <- 50
+ 
+#Function that provides us the evolutional outcomes for Co-dominance situation
+natsel <- function(w11,w12,w22,p0,n0,time){
+  p <- p0
+  w <- NULL
+  n <- n0
+  for (t in 1:time){
+    wbar = p[t]^2*w11+2*p[t]*(1-p[t])*w12+(1-p[t])^2*w22
+    pprime = (p[t]*w11 + (1-p[t])*w12)*p[t]/wbar
+    nprime = wbar*n[t]
+    p <- c(p, pprime)
+    w <- c(w, wbar)
+    n <- c(n, nprime)
+  }
+  return(cbind(p,w,n))
+}
+
+##Let's plot graph for Fraction of A1 in genepool over time
+
+plot(NA,xlim=c(0,time),ylim=c(0,1),ylab="Fraction of A1 in genepool",xlab="time", main = "Fraction of A1 in genepool vs Time(in generations)")
+time <- 50
+for (i in 1:length(s)){
+  output <- natsel(1-s[i],1-s[i]/2,1,0.75,5000,time) #starts with p0 of 0.75 and lower fitness for A1 (so p decreases)
+  lines(output[,"p"]~c(0:time),lwd=2)
+}
+
+#Relative fitness over time 
+
+s <- c(0.05)
+time <- 50
+plot(NA,xlim=c(0,time),ylim=c(0.95,1),ylab="Relative fitness",xlab="time", main = "Relative Fitness vs Time(in generations)")
+output <- natsel(1-s,1-s/2,1,0.75,5000,time) #directional with co-dominance)
+lines(output[1:50,"w"]~c(1:time),lwd=2)
+
+##Population size over time
+
+s <- c(0.05)
+time <- 50
+plot(NA,xlim=c(0,time),ylim=c(0,10000),ylab="Population size",xlab="time", main = "Population size vs Time(in generations)")
+time <- 50
+for (i in 1:length(s)){
+  output <- natsel(1-s[i],1-s[i]/2,1,0.75,5000,time)
+  lines(output[,"n"]~c(0:time),lwd=3)
+}
+```
+
+As presented in the first graph, we can see that Fraction of A1 in genepool decrease over time and seems that selection is in favor of A2.Regardless of selective power, the less-fit allele A1 eventually disappears from the population and A2 becomes fixed, and consequently the population can reach an average fitness of one. 
+
+In third graph, Population size vs time, the population size of A1 decreases over time.
+
+```{r populationsize}
+
+#initial conditions
+m <- 2
+p <- 1500/2000
+n <- 2000
+w = 1
+#Loop
+for (t in 1:50){
+  w11 = m*eval(l11)
+  w12 = m*eval(l12)
+  w22 = m*eval(l22)
+  wbar = p[t]^2*w11+2*p[t]*(1-p[t])*w12+(1-p[t])^2*w22
+  pprime = (p[t]*w11 + (1-p[t])*w12)*p[t]/wbar
+  nprime = wbar*n[t]
+  p <- c(p, pprime)
+  n <- c(n, nprime)
+  w <- c(w, wbar)
+}
+
+#Adjust fitness
+a = 1/prod(w[2:51])^(1/50)
+#Loop Take Two
+m <- 2
+p <- 1500/2000
+n <- 2000
+w = 1
+for (t in 1:50){
+  w11 = a*m*eval(l11)
+  w12 = a*m*eval(l12)
+  w22 = a*m*eval(l22)
+  wbar = p[t]^2*w11+2*p[t]*(1-p[t])*w12+(1-p[t])^2*w22
+  pprime = (p[t]*w11 + (1-p[t])*w12)*p[t]/wbar
+  nprime = wbar*n[t]
+  p <- c(p, pprime)
+  n <- c(n, nprime)
+  w <- c(w, wbar)
+}
+
+#How does p change?
+t<-c(0:50)
+par(mfrow=c(1,3))
+plot(p~t,type="l",lwd=3,las=2 ,ylab="Fraction of A1 in genepool",xlab="Time", main = "Fraction of A1 in genepool vs Time)")
+
+#How does N change?
+plot(n~t,type="l",lwd=3,las=2,log="y",ylab="Average fitness",xlab="time", main = "Average Fitness vs Time")
+
+#How does average fitness change?
+plot(w~t,type="l",lwd=3,las=2,ylab="Population size",xlab="time", main = "Population size vs Time")
+```
+
+
+The above graphs details the dynamics of proportion of A1, population size, and average fitness over time. Before 12 generations, the proportion of A1 increases in the population, and then sharply falls over the time. Immediately after 12 generations, the population collapses due to the large proportion of A1 and the temperatures exceeding the temperature threshold, meaning A1 confers low survivability yet is abundant in the population. The population recovers as A2 begins to dominate the population. For these same reasons, average fitness plummets early on, and recovers as the A2 allele dominates.
+
+
+Question 3: Heterozygote advantage (7 pts)
+Use the idea of adaptive topography to describe a case of heterozygote advantage (as in Figure 5.14). You may choose any biologically plausible values that results in a stable equilibrium with 0.5 < p < 1, where p is the proportion of A1 in a two allele system. Show the result in a plot and give the equilibrium value of p.
+
+```{r}
+s <- 0.3
+w11=1-s
+w12=1
+w22=1-s
+p <- seq(0,1,by=0.1)
+
+wbar = p^2*w11+2*p*(1-p)*w12+(1-p)^2*w22
+
+plot(wbar~p, type="l" , xlab="Proportion of A1", ylab = "wbar", main="Adaptive topography in favor of heterozygote advantage")
+
+```
+
+We chose Values such that the heterozygote A1A2 was the fittest, but homozygote A1A1 was more fit than homozygote A2A2. As shown by this adaptive topography plot, average relative fitness (0.8) is highest (and thus at equilibrium) when A1 comprises 70% of the population's alleles for this gene. The average relative fitness can never reach one if a heterozygote is selected for, because keeping a population polymorphic means that some less fit homozygotes are bound to occur by chance.
+
+
+Question 4: Genetic drift and maintenance of genetic diversity (10 pts)
+Last assignment we considered the minimum viable population size of a population of conservation concern. Long term conservation also requires maintenance of genetic diversity. Using simulations and starting with the example of drift mixed with selection from the chapter, determine the minimum population size to provide a 99% chance of preserving both alleles for 100 generations.  (This assumes constant population size). Explain (in words) how genetic would interact with demographic stochasticity in a realistic population, as studied in the previous assignment. Does this have any implications for conservation management?
+
+```{r geneticdrift}
+
+drift_ns <- function(w11,w12,w22,p0,n,time){
+  p <- p0
+  for (t in 1:time){
+    a1 <- rbinom(2*n,size=1,prob=p[t])
+    pd <- sum(a1)/(2*n)
+    wbar = pd^2*w11+2*pd*(1-pd)*w12+(1-pd)^2*w22
+    pprime = (pd*w11 + (1-pd)*w12)*pd/wbar
+    p <- c(p, pprime)
+  }
+  return(p)
+}
+set.seed(1)
+e2 <- NULL
+for (i in 1:18){
+  e2 <- cbind(e2,drift_ns(w11=0.5,w12=1,w22=0.5,p0=0.5,n=2,time=100))
+}
+e6 <- NULL
+for (i in 1:18){
+  e6 <- cbind(e6,drift_ns(w11=0.5,w12=1,w22=0.5,p0=0.5,n=6,time=100))
+}
+e10 <- NULL
+for (i in 1:18){
+  e10 <- cbind(e10,drift_ns(w11=0.5,w12=1,w22=0.5,p0=0.5,n=10,time=100))
+}
+e12 <- NULL
+for (i in 1:18){
+  e12 <- cbind(e12,drift_ns(w11=0.5,w12=1,w22=0.5,p0=0.5,n=10,time=100))
+}
+colors<-rainbow(18)
+plot(e2[,1],col=colors[1],lwd=1.5,type="l",ylim=c(0,1),xlab="generation",ylab="proportion A1", main = "Genetic drift in population size 2")
+for (i in 2:18){
+  lines(e2[,i],col=colors[i],lwd=1.5)
+}
+colors<-rainbow(18)
+plot(e6[,1],col=colors[1],lwd=1.5,type="l",ylim=c(0,1),xlab="generation",ylab="proportion A1", main = "Genetic drift in population size 6")
+for (i in 2:18){
+  lines(e6[,i],col=colors[i],lwd=1.5)
+}
+colors<-rainbow(18)
+plot(e10[,1],col=colors[1],lwd=1.5,type="l",ylim=c(0,1),xlab="generation",ylab="proportion A1", main = "Genetic drift in population size 10")
+for (i in 2:18){
+  lines(e10[,i],col=colors[i],lwd=1.5)
+}
+
+colors<-rainbow(18)
+plot(e12[,1],col=colors[1],lwd=1.5,type="l",ylim=c(0,1),xlab="generation",ylab="proportion A1", main = "Genetic drift in population size 12")
+for (i in 2:18){
+  lines(e12[,i],col=colors[i],lwd=1.5)
+}
+```
+
+In this instance, when considering genetic drift, the minimum population size to provide a 99% chance of polymorphism for 100 generations is ~12 individuals. If demographic stochasticity were added into these simulations, it would increase the likelihood of fixation (exacerbate genetic drift), meaning the minimun population size for maintaining polymorphism would need to be larger. Essentially, genetic drift is more powerful in small populations, and genetic diversity is therefore harder to maintain.

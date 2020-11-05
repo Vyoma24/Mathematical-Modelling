@@ -1,0 +1,250 @@
+---
+title: "Sheth_Assignment3"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=75),tidy=TRUE)
+```
+
+## R Markdown
+
+```{r packages}
+library(Ryacas)
+library(deSolve)
+library(mosaicCalc)
+```
+
+Question 1: Loggerhead turtle population dynamics (10 pts)
+Chapter 3.6 provides the Leslie matrix estimated for the U.S. population of loggerhead sea turtles in the 1980s. Using this matrix answer the following questions, showing and explaining your work.
+
+*Part1.1*
+
+What is the stable growth rate of the population as represented in matrix A?
+
+Chapter 3.6 already provides us with the Leslie matrix for Loggerhead sea turtles which shows us the stage structure growth
+```{r}
+#Create Leslie matrix
+A <- rbind(c(0,0,0,4.665,61.896), c(0.675,0.703,0,0,0),c(0,0.047,0.657,0,0),c(0,0,0.019,0.682,0),c(0,0,0,0.061,0.8091))
+print(A)
+
+#Stable age distribution and geometric growth factor can be obtained by finding the eigenvector and eigenvalues of the matrix A
+GR_A <- eigen(A)
+print(GR_A)
+
+#Assigning Geometric growth factor (big R) as it is the biggest eigenvalue of all the values.
+GR_R <- abs(eigen(A)$values[1])
+print(GR_R)
+```
+
+*Part2*
+
+Which changes the growth rate by a larger proportion, increasing the survival to juvenile stage to 100% or decreasing clutch size for the large mature size class by half?
+
+```{r}
+# Increasing survival of juvenile stage to 100%
+
+#Create Leslie matrix in which the juvenile stage(stage1) has 100% survival probability
+J <- rbind(c(0,0,0,4.665,61.896), c(1.000,0.703,0,0,0),c(0,0.047,0.657,0,0),c(0,0,0.019,0.682,0),c(0,0,0,0.061,0.8091))
+
+#Finding growth rate
+GR_J <- eigen(J)
+
+#Assigned big R value.
+GR_JR <- abs(eigen(J)$values[1])
+
+#Change in growth rate
+C_JR <- GR_R - GR_JR
+eval(abs(C_JR))
+
+#Decreasing clutch size for large mature class size by half
+
+#Create Leslie matrix in which clutch size for Mature class (stage5) has been reduced to half
+
+M <- rbind(c(0,0,0,4.665,30.948), c(1.000,0.703,0,0,0),c(0,0.047,0.657,0,0),c(0,0,0.019,0.682,0),c(0,0,0,0.061,0.8091))
+
+#Find growth rate
+GR_M <- eigen(M)
+
+#Assigned big R value.
+GR_MR <- abs(eigen(M)$values[1]) 
+
+#Change in growth rate
+C_MR <- GR_R - GR_MR
+eval(abs(C_MR))
+
+## Based on the values of C_JR and C_MR, increasing the survival of juvenile stage population has a huge impact in the population growth than decreasing the clutch size of mature class size. This makes sense as increasing the survival of juvenile stage has impact on all the stages and also on the reproduction rate of the sea turtles.
+```
+
+
+*Part3*
+
+How much does mortality in stages 4 and 5 need to be reduced to achieve positive growth? (Assume the change in mortality is equal for the two stages). 
+
+```{r}
+# Create Leslie matrix
+PG <- rbind(c(0,0,0,4.665,61.896), c(0.675,0.703,0,0,0),c(0,0.047,0.657,0,0),c(0,0,0.019,0.682,0),c(0,0,0,0.061,0.8091))
+
+# Increasing the value of probability of survival to achieve positive growth
+
+while (abs(eigen(PG)$values[1]) < 1) {
+
+  PG[4,4] = (PG[4,4] *1000 +1 ) / 1000
+  PG[5,5] = (PG[5,5] *1000 +1 ) / 1000
+  
+}
+print(PG)
+print(eigen(PG))
+
+#Change in mortality in stages 4 and 5
+Stage4 <- abs(A[4,4] - PG[4,4])
+Stage5 <- abs(A[5,5] - PG[5,5])
+print(Stage4*100,Stage5*100)
+
+##Based on the answer, the probability of survival for stages 4 and 5 should be increased by 8.4 percent to achieve positive growth.
+```
+
+
+
+*Part4*
+ 
+Is there a reduction in mortality in stages 4 and 5 that results in the population doubling in 50 years? If so, what is it?
+
+```{r}
+# Create Leslie matrix that obtained by increasing the value of probablity of survival
+LM <- rbind(c(0,0,0,4.665,61.896), c(0.675,0.703,0,0,0),c(0,0.047,0.657,0,0),c(0,0,0.019,0.767,0),c(0,0,0,0.061,0.8941))
+#Initial values of the population for each stage
+n0 <- cbind(c(300,800,50,50,50))
+# Total projection years
+nt <- 50
+# Assign matrix
+TotMat <- LM
+
+npop <- matrix(0,nrow=nrow(TotMat),ncol=nt+1)
+# Assign the initial value of population
+npop[,1] <- n0 
+# loop for 50 years population projection
+for(t in 2:(nt+1)){   
+  npop[,t] <-  TotMat %*% npop[,t-1]
+}
+#plot graph  for all the stages for 50 years
+plot(npop[1,],ylim=c(0,4000), type = "l", lwd = 2, ylab = "Population", xlab = "Time (years)", main = "Population Projection Over 50 Years", col = "blue")
+lines(npop[2,],ylim=c(0,4000), type = "l",lwd = 2, ylab = "Population", xlab = "Time (years)", main = "Population Projection Over 50 Years", col = "red")
+lines(npop[3,],ylim=c(0,4000), type = "l",lwd = 2, ylab = "Population", xlab = "Time (years)", main = "Population Projection Over 50 Years", col = "purple")
+lines(npop[4,],ylim=c(0,4000), type = "l",lwd = 2, ylab = "Population", xlab = "Time (years)", main = "Population Projection Over 50 Years", col = "black")
+lines(npop[5,],ylim=c(0,4000), type = "l",lwd = 2, ylab = "Population", xlab = "Time (years)", main = "Population Projection Over 50 Years", col = "cyan")
+
+
+## So, I used the concept from the lecture and link given below to formulate the code for the population projection for next 50 years to see if there is doubling of the population. I used the matrix generated by part c which increases the survival rate of stage 4 and 5 to achieve positive growth to see the population size growth for next 50 years. After looking at the graph it certainly seems that there is spike in the population size of stage 1,2,3 and it can be said that the population doubles from the initial population size for those 3 stages. But it is hard to say for stage 4 and 5 as the starting population is really small to see change.
+#Reference: https://kevintshoemaker.github.io/NRES-470/LAB4.html
+```
+
+Question 2: Minimum viable population size (10 pts) 
+Conservation decisions are sometimes made based on estimating the minimum viable size of a population. This is often defined as the number of individuals necessary to sustain 99% probability of population persistence in 100 years. Using our model of demographic stochasticity from class, determine the minimum viable starting population size for this model. (Hint: You can simulate many times (at least 100) from each starting population size to determine the probability of persistence). If appropriate, use a plot to help explain your answer.
+
+```{r}
+dem.stoch <- function(p0,p1,n0,times){
+  n=n0
+  for (i in 1:times){
+    new_n = 0
+    if (n[i]==0){
+      n <- c(n, new_n)
+    }else{
+      for (j in 1:n[i]){
+        luck = runif(1)nb
+        if (luck < p0){
+          new_n = new_n
+        }else{
+          if (luck < p0 + p1){
+            new_n = new_n + 1
+          }else{
+            new_n = new_n + 2}
+        }
+      }      
+      n <- c(n, new_n)
+    }
+  }
+  return(n)
+}
+
+#Converting into dataframe
+n.16<-data.frame(dem.stoch(0.25,0.5,16,100))
+n.32<-data.frame(dem.stoch(0.25,0.5,32,100))
+n.64<-data.frame(dem.stoch(0.25,0.5,64,100))
+n.128<-data.frame(dem.stoch(0.25,0.5,128,100))
+n.256<-data.frame(dem.stoch(0.25,0.5,256,100))
+
+#Assigning the values for the function
+
+n0.16<-dem.stoch(0.25,0.5,16,100)
+n0.32<-dem.stoch(0.25,0.5,32,100)
+n0.64<-dem.stoch(0.25,0.5,64,100)
+plot(n0.64,type="l",ylab="population",xlab="time",lwd=2)
+n0.128<-dem.stoch(0.25,0.5,128,100)
+n0.256<-dem.stoch(0.25,0.5,256,100)
+plot(n0.256,ylim=c(0,max(n0.256)),type="l",ylab="population",xlab="time",lwd=2,col="darkorchid2")
+lines(dem.stoch(0.25,0.5,16,100),ylab="population",xlab="time",lwd=2,col="black")
+lines(dem.stoch(0.25,0.5,32,100),ylab="population",xlab="time",lwd=2,col="firebrick")
+lines(dem.stoch(0.25,0.5,64,100),ylab="population",xlab="time",lwd=2,col="orange")
+lines(dem.stoch(0.25,0.5,128,100),ylab="population",xlab="time",lwd=2,col="goldenrod3")
+lines(dem.stoch(0.25,0.5,256,100),ylab="population",xlab="time",lwd=2,col="forestgreen")
+legend(legend=c("16","32","64","128","256"),
+       text.col=c("black","firebrick","orange","goldenrod3","forestgreen","darkorchid2"),
+       lty=1,col=c("black","firebrick","orange","goldenrod3","forestgreen","darkorchid2"),
+       lwd=2,x=0,y=180)
+## To be able to see visually, I tried to convert the values for different population size into dataframe and saw if the population is extincting before 100 years or not. Based on the dataframe I created I was able to figure out that population size "64" persists beyond 100 years. Population size 16 and 32 extinct before 100 years. Then I created graph for the population size 64 and one graph for all the population size to have clear visual understanding
+
+```
+
+Question 3: Logistic growth with environmental variation (10 pts)
+Starting from the discrete time logistic model in the book, add environmental stochasticity in the form of 3 possible conditions (good, neutral, bad). Show a plot of population size over time and explain differences from the basic model without environmental variation.
+```{r}
+# Discrete time logistic model
+logistic <- function(r, k, n0, time){
+  n <- n0
+  for (t in 1:time){
+    nprime <- n[t] + r*n[t]*(k-n[t])/k
+    if (nprime < 0) nprime = 0
+    n <- c(n, nprime)
+  }
+  return(n)
+}
+#Assigning values
+DTM <- logistic(GR_R,1000,2,20)
+
+# Adding Enviornmental stochasticity
+DES <- function(rbad,rgood,rneut, k, n0, time){
+n <- n0
+  for (t in 1:time){
+    if (runif(1) < 0.33) { 
+      r = rbad
+    } else {
+      if ( runif(1) >0.33 && runif(1) < 0.66) {
+        r = rneut
+      } else {
+        if (runif(1) > 0.66) {
+          r = rgood
+        }
+      }
+    }
+    nprime <- n[t] + r*n[t]*(k-n[t])/k
+    if (nprime < 0) nprime = 0
+    n <- c(n, nprime) 
+  }
+  return(n)
+}
+
+DES_values <- DES((4/5),(5/4),1,1000,2,20)
+plot(DES_values,ylab = "Population",xlab = "Time (years)",type = "l",col="blue")
+par(new=TRUE)
+plot(DTM,type = "l",col="green")
+legend(legend=c("Discrete Time Logistic Model", "Logistic Model with Environmental Variation"),
+       text.col=c("black","black"),
+       col=c("green","blue"),
+               lty=1,lwd=2,x=10,y=180)
+## The basic discrete time model represents the geometric growth of the population. When the population is small, it increases rapidly and once it has reached its peak, the growth rate slows down. Adding the environmental stochasticity provides us the information how the growth rate is affected based on the good, bad and neutral conditions. From the graph, it is evident that even after adding environmental stochaticity the graph is sigmoidal and doesn't have worse effects on the population growth but it does account the possible reasons for changes in the population growth.
+
+```

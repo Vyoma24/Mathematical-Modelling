@@ -1,0 +1,452 @@
+---
+title: "Sheth_Assignment5"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(error =  TRUE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=65),tidy=TRUE)
+```
+
+##R markdown
+
+```{r packages}
+library(Ryacas)
+library(deSolve)
+library(mosaicCalc)
+```
+
+Question 1: Intermediate disturbance hypothesis (15 pts)
+We did not cover section 6.1.5 in class. For this problem please use R and Ryacas to solve for d_min, d_max, and d_ub. (It is okay if the solutions do not simplify the same as in the book.) Use your solutions in R to recreate Figure 6.11. In your own words, write a section of text explaining what each expression represents and how the intermediate disturbance hypothesis is supported by the plot. Then explain how looking at this for two species provides insight into whether disturbance can maintain diversity in a system with more than two species.
+
+#Adding disturbance to Lotka-Volterra model
+
+$dN_1/d_t = \frac{r_1N_1(K_1 - N_1 - {alpha}_{12}N_2} {K_1} - d_1N_1$
+
+$dN_2/d_t = \frac{r_2N_2(K_2 - N_2 - {alpha}_{21}N_1} {K_2} - d_2N_2$
+
+#Equalibria with disturbance in species when alone and when they co-exist are below
+
+$N_{1alone} = K_1(1-d_1/r_1)$
+
+$N_{2alone} = K_2(1-d_2/r_2)$
+
+$N_{1co-exist} = \frac{K_1(1-d_1/r_1)- alpha_{12}K_2(1-d_2/r_2)}{1-alpha_{12}alpha_{21}}$
+
+$N_{2co-exist} = \frac{K_2(1-d_2/r_2)- alpha_{21}K_1(1-d_1/r_1)}{1-alpha_{21}alpha_{12}}$
+
+```{r Intermediate disturbance hypothesis}
+
+#Replacing d with dh where d is the disturbance and h is exposure to hazard which is due to disturbance
+
+n1_alone <- expression("k1*(r1-h1*d)/r1")
+n2_alone <- expression("k2*(r2-h2*d)/r2")
+n1_coexist <- expression("(k1*(r1-h1*d)/r1-a12*k2*(r2-h2*d)/r2)/(1-a12*a21)")
+n2_coexist <- expression("(k2*(r2-h2*d)/r2-a21*k1*(r1-h1*d)/r1)/(1-a12*a21)")
+dn1_rare <- expression("(k1*(r1-h1*d)/r1-a12*k2*(r2-h2*d)/r2)")
+dn2_rare <- expression("(k2*(r2-h2*d)/r2-a21*k1*(r1-h1*d)/r1)")
+
+#*d_min* which is minimum level of disturbance at which species 2 can survive
+d_min <- yac_expr(y_rmvars(solve(ysym(dn2_rare),'d')))
+print(d_min)
+
+#d_max is maximum level of disturbance species 1 can handle before it dies
+d_max <- yac_expr(y_rmvars(solve(ysym(dn1_rare),'d')))
+print(d_max)
+
+#d_ub is upper bound limit of disturbance at which species 2 can survive
+d_ub <- yac_expr(y_rmvars(solve(ysym(n2_alone),'d')))
+print(d_ub)
+
+r1 <- 0.75
+k1 <- 750
+a12 <- 0
+h1 <- 1
+r2<- 1
+k2<- 1000
+a21 <- 2
+h2 <- 0.75
+
+eval(d_min)
+eval(d_max)
+eval(d_ub)
+
+plot(NA,xlim=c(0,1.4),ylim=c(0,800),type = "l",xaxs="i",yaxs="i",ylab="Abundance",xlab="Disturbance",main = "Intermediate Disturbance Principle")
+d <- seq(0,eval(d_min), by = eval(d_min)/10)
+lines(eval(yac_expr(n1_alone))~d,lwd=1.5,col="dodgerblue4")
+d <- seq(eval(d_min),eval(d_max),by = (eval(d_max)-eval(d_min)))
+lines(eval(yac_expr(n1_coexist))~d,lwd=1.5,col="red")
+lines(eval(yac_expr(n2_coexist))~d,lwd=1.5,col="green")
+d <- seq(eval(d_max), eval(d_ub), by = (eval(d_ub)-eval(d_max)))
+lines(eval(yac_expr(n2_alone))~d,lwd=1.5,col="orange")
+legend("topright", legend = c("n1_alone","n1_coexist","n2_coexist","n2_alone"),pch=16, pt.cex=1.5, cex=0.5, bty='n', col=c("dodgerblue4","red","green","orange"))
+```
+
+*Explanation of all the expression*
+
+In this case scenario, let's consider 2 species where species 1 is the dominant competitor (which means without disturbance species 1 will take over species 2 ). When disturbance is introduced the survival of species 2 increases even when its rare as species 1 will be experiencing disturbance which allows species 2 to invade. So *d_min* which is minimum level of disturbance at which species 2 can survive and thrive even when its rare.With continuous increase in level of disturbance, species 1 gets affected more and can eventually get wiped out from the system. So, *d_max* is maximum level of disturbance species 1 can handle before it dies.Even after species 1 is removed from the system, if the disturbance is increased then species 2 will also be removed form the system. So, *d_ub* is upper bound limit of disturbance at which species 2 can survive.
+
+In the gist, the species 1 dominates till species 2 can invade which is when the disturbance level is dmin. After that species 1 and species 2 will coexist between dmin and dmax. This is the most crucial part as it help in increasing the species diversity. But if the disturbance continues to increase then both the species can be wiped out.As it is seen in the graph there is general decline in the both species. The intermediate disturbance principle helps in maintaining species diversity, conservation of rare species.When applying to real world scenario, there are many natural disturbances like small natural fires, lightning, flooding which actually helps in the maintaining the balance among species diversity. In ecosystem, there are always some species which dominates and without intermediate disturbance it is very much possible that dominant species will crowd out the other species. 
+
+*Explanation of graph*
+
+The graph visually explains that species 1 is dominating at first but as the disturbance increases, the species 1 will be affected and there is a point at which species 2 will invaded which is at 0.4. Both the species co-exist between 0.4 to 0.75. During this the species 2 increases till 0.75 and after that it starts to decrease as disturbance level increases.
+
+*Disturbance in Multi-species ecosystem*
+
+This was example of two species ecosystem but if there are 3 species with similar situation (one species is dominant on another) then there will be ranking among species and for them to coexist the minimum and maximum disturbance level to their survival should be determined. But one which is highly dominant will be removed from ecosystem first as disturbance level increases. Also, the type is disturbance, severity of disturbance should be taken into account when considering multi-species ecosystem. Let's say if there is hurricane (Category 5) then the level of disturbance is more which might lead to the recession in over all species of the ecosystem but if the severity of the hurricane is little less then it affects the most dominant (highly numbered species) which reduces the interspecific competition and allows succession of lower numbered species. If the graph is plot for multi species system over time not having severe disturbance intensity(which help in maintaining the diversity of species), from my understanding(I'm not so sure if I'm correct) we would be able to see a wave in the diversity of species(a point where species co-exist and interspecific competition decreases which allows all the species to thrive but also it depends on the reproduction rate of individual species). 
+
+
+Question 2: Predator-prey dynamics with satiation (15 pts)
+
+In section 6.4.4, Roughgarden analyzes the predator-prey model where the prey has logistic growth and the predator becomes satiated. He does this for a particular set of parameter values. Starting from the new set of parameter values below, do the following. 
+1.	Find values for K that yield a stable node, stable focus, and unstable focus using numerical solutions. Produce a plot of predator vs prey abundance for each case with two or more starting conditions shown.
+
+```{r LVpred_satiation Stable_node}
+#functional response
+type1 <- expression(a*n1)
+type2 <- expression(c*(1-exp(-a*n1/c)))
+a <- 0.01
+c <- 10
+n1 <- seq(0,3000,by=100)
+plot(eval(type1)~n1,lwd=2,xlab="Prey #",ylab="Rate of consumption per predator",type="l")
+lines(eval(type2)~n1,lwd=2,col="forestgreen")
+
+#Predator prey model
+dn1 = expression(r*n1*(k-n1)/k-c*(1-exp(-a*n1/c))*n2)
+dn2 = expression(b*c*(1-exp(-a*n1/c))*n2-d*n2)
+
+#Equilibrium of Prey and Predator
+n1hat3 <- expression(-log((b*c-d)/b/c)/a*c)
+n2hat3 <- expression(-r*log((b*c-d)/b/c)*c*b*(k*a+log((b*c-d)/b/c)*c)/k/a^2/d)
+
+
+r = 0.7 #intrinsic rate in increase of prey
+a = 0.01 # prey-capture rate
+b = 0.05 #number of prey captures needed to cause birth of predator 
+d = 0.12 #death rate of predator
+c = 10 #consumption rate of predator
+
+#Minimum k that helps predator population to persists so they can coexist.
+kmin <- (-log((b*c-d)/b/c)/a*c)
+kmin_n <- eval(kmin)
+kmin_n
+
+k=400 #Determining k after evaluation the minimum k for predator population.
+
+n1hat <- eval(n1hat3)
+n2hat <- eval(n2hat3)
+
+#Numerical solution
+LVpred_satiate <- function (t, n, parms){
+  with(as.list(parms), {
+    dn1 <- r * n[1]*(k-n[1])/k - c*(1-exp(-a*n[1]/c))*n[2]
+    dn2 <- b*c*(1-exp(-a*n[1]/c))*n[2] - d*n[2]
+    list(c(dn1, dn2))
+  })
+}
+
+#Starting conditions
+initialN1 <- c(n1hat/2,n2hat/2)
+initialN2 <- c(n1hat/4,n2hat/4)
+initialN3 <- c(2*n1hat, 2*n2hat)
+initialN4 <- c(4*n1hat, 4*n2hat)
+initialN5 <- c(2*n1hat, n2hat/2)
+initialN6 <- c(4*n1hat, n2hat/4)
+
+#Low K (but above k_min)
+k=400
+out.pred1 <- ode(y = initialN1, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred2 <- ode(y = initialN2, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred3 <- ode(y = initialN3, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred4 <- ode(y = initialN4, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred5 <- ode(y = initialN5, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred6 <- ode(y = initialN6, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+
+#plot(n2hat~n1hat,xlim=c(0,2000),ylim=c(0,80),xlab="Prey #", ylab="Predator #",las=1,pch=3,lwd=2, main = "Predator-prey model with satiation")
+plot(NA,xlim=c(0,3000),ylim=c(0,100),xlab="Prey #", ylab="Predator #",las=1,pch=2,lwd=2)
+lines(out.pred1[,3]~out.pred1[,2],lwd=1.5,col="dodgerblue1")
+lines(out.pred2[,3]~out.pred2[,2],lwd=1.5,col="dodgerblue2")
+lines(out.pred3[,3]~out.pred3[,2],lwd=1.5,col="dodgerblue3")
+lines(out.pred4[,3]~out.pred4[,2],lwd=1.5,col="dodgerblue4")
+lines(out.pred5[,3]~out.pred5[,2],lwd=1.5,col="skyblue2")
+lines(out.pred6[,3]~out.pred6[,2],lwd=1.5,col="skyblue3")
+points(n2hat~n1hat,pch=3,lwd=2)
+
+#Jacobian and eigenvalue
+n1 = n1hat
+n2 = n2hat
+jac <- matrix(c(eval(D(dn1,"n1")),eval(D(dn1,"n2")),eval(D(dn2,"n1")),eval(D(dn2,"n2"))),nrow=2,byrow=TRUE)
+lambda1=eigen(jac)
+lambda1
+```
+
+
+```{r Stable focus}
+#Predator prey model
+dn1 = expression(r*n1*(k-n1)/k-c*(1-exp(-a*n1/c))*n2)
+dn2 = expression(b*c*(1-exp(-a*n1/c))*n2-d*n2)
+
+n1hat3 <- expression(-log((b*c-d)/b/c)/a*c)
+n2hat3 <- expression(-r*log((b*c-d)/b/c)*c*b*(k*a+log((b*c-d)/b/c)*c)/k/a^2/d)
+kmin <- -log((b*c-d)/b/c)/a*c
+r = 0.7
+a = 0.01
+b = 0.05
+d = 0.12
+c = 10
+k=1500
+n1hat <- eval(n1hat3)
+n2hat <- eval(n2hat3)
+kmin_n <- eval(kmin)
+
+#Numerical solution
+LVpred_satiate <- function (t, n, parms){
+  with(as.list(parms), {
+    dn1 <- r * n[1]*(k-n[1])/k - c*(1-exp(-a*n[1]/c))*n[2]
+    dn2 <- b*c*(1-exp(-a*n[1]/c))*n[2] - d*n[2]
+    list(c(dn1, dn2))
+  })
+}
+
+#Increasing K 
+k=1500
+out.pred1 <- ode(y = initialN1, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred2 <- ode(y = initialN2, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred3 <- ode(y = initialN3, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred4 <- ode(y = initialN4, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred5 <- ode(y = initialN5, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred6 <- ode(y = initialN6, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+
+
+#plot(n2hat~n1hat,xlim=c(0,2000),ylim=c(0,80),xlab="Prey #", ylab="Predator #",las=1,pch=3,lwd=2, main = "Predator-prey model with satiation")
+plot(NA,xlim=c(0,3000),ylim=c(0,100),xlab="Prey #", ylab="Predator #",las=1,pch=2,lwd=2)
+lines(out.pred1[,3]~out.pred1[,2],lwd=1.5,col="dodgerblue1")
+lines(out.pred2[,3]~out.pred2[,2],lwd=1.5,col="dodgerblue2")
+lines(out.pred3[,3]~out.pred3[,2],lwd=1.5,col="dodgerblue3")
+lines(out.pred4[,3]~out.pred4[,2],lwd=1.5,col="dodgerblue4")
+lines(out.pred5[,3]~out.pred5[,2],lwd=1.5,col="skyblue2")
+lines(out.pred6[,3]~out.pred6[,2],lwd=1.5,col="skyblue3")
+points(n2hat~n1hat,pch=3,lwd=2)
+
+#Jacobian and eigenvalue
+n1 = n1hat
+n2 = n2hat
+jac2 <- matrix(c(eval(D(dn1,"n1")),eval(D(dn1,"n2")),eval(D(dn2,"n1")),eval(D(dn2,"n2"))),nrow=2,byrow=TRUE)
+lambda2=eigen(jac2)
+lambda2
+```
+
+```{r Unstable focus}
+
+#Predator prey model
+dn1 = expression(r*n1*(k-n1)/k-c*(1-exp(-a*n1/c))*n2)
+dn2 = expression(b*c*(1-exp(-a*n1/c))*n2-d*n2)
+
+n1hat3 <- expression(-log((b*c-d)/b/c)/a*c)
+n2hat3 <- expression(-r*log((b*c-d)/b/c)*c*b*(k*a+log((b*c-d)/b/c)*c)/k/a^2/d)
+kmin <- -log((b*c-d)/b/c)/a*c
+r = 0.7
+a = 0.01
+b = 0.05
+d = 0.12
+c = 10
+k=2500
+n1hat <- eval(n1hat3)
+n2hat <- eval(n2hat3)
+kmin_n <- eval(kmin)
+
+#Numerical solution
+LVpred_satiate <- function (t, n, parms){
+  with(as.list(parms), {
+    dn1 <- r * n[1]*(k-n[1])/k - c*(1-exp(-a*n[1]/c))*n[2]
+    dn2 <- b*c*(1-exp(-a*n[1]/c))*n[2] - d*n[2]
+    list(c(dn1, dn2))
+  })
+}
+
+#Increasing K
+k=2500
+out.pred1 <- ode(y = initialN1, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred2 <- ode(y = initialN2, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred3 <- ode(y = initialN3, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred4 <- ode(y = initialN4, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred5 <- ode(y = initialN5, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred6 <- ode(y = initialN6, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+
+
+#plot(n2hat~n1hat,xlim=c(0,2000),ylim=c(0,80),xlab="Prey #", ylab="Predator #",las=1,pch=3,lwd=2,main = "Predator-prey model with satiation")
+plot(NA,xlim=c(0,3000),ylim=c(0,100),xlab="Prey #", ylab="Predator #",las=1,pch=2,lwd=2)
+lines(out.pred1[,3]~out.pred1[,2],lwd=1.5,col="dodgerblue1")
+lines(out.pred2[,3]~out.pred2[,2],lwd=1.5,col="dodgerblue2")
+lines(out.pred3[,3]~out.pred3[,2],lwd=1.5,col="dodgerblue3")
+lines(out.pred4[,3]~out.pred4[,2],lwd=1.5,col="dodgerblue4")
+lines(out.pred5[,3]~out.pred5[,2],lwd=1.5,col="skyblue2")
+lines(out.pred6[,3]~out.pred6[,2],lwd=1.5,col="skyblue3")
+points(n2hat~n1hat,pch=3,lwd=2)
+
+#Jacobian and eigenvalue
+n1 = n1hat
+n2 = n2hat
+jac3 <- matrix(c(eval(D(dn1,"n1")),eval(D(dn1,"n2")),eval(D(dn2,"n1")),eval(D(dn2,"n2"))),nrow=2,byrow=TRUE)
+lambda3=eigen(jac3)
+lambda3
+```
+2.	What is the minimum K for the predator to persist?
+
+```{r kmin}
+kmin <- -log((b*c-d)/b/c)/a*c
+r = 0.7
+a = 0.01
+b = 0.05
+d = 0.12
+c = 10
+kmin_n <- eval(kmin)
+kmin_n
+```
+3.	Choose one of these cases and experiment with changing the satiation parameters ‘a’ and ‘c’. What is the effect of increasing ‘a’ on the dynamics? What is the effect of decreasing ‘c’?
+```{r Increasing a}
+dn1 = expression(r*n1*(k-n1)/k-c*(1-exp(-a*n1/c))*n2)
+dn2 = expression(b*c*(1-exp(-a*n1/c))*n2-d*n2)
+
+n1hat3 <- expression(-log((b*c-d)/b/c)/a*c)
+n2hat3 <- expression(-r*log((b*c-d)/b/c)*c*b*(k*a+log((b*c-d)/b/c)*c)/k/a^2/d)
+kmin <- (-log((b*c-d)/b/c)/a*c)
+r = 0.7
+a = 0.03
+b = 0.05
+d = 0.12
+c = 10
+k=400
+n1hat <- eval(n1hat3)
+n2hat <- eval(n2hat3)
+kmin_n <- eval(kmin)
+kmin_n
+
+#Numerical solution
+LVpred_satiate <- function (t, n, parms){
+  with(as.list(parms), {
+    dn1 <- r * n[1]*(k-n[1])/k - c*(1-exp(-a*n[1]/c))*n[2]
+    dn2 <- b*c*(1-exp(-a*n[1]/c))*n[2] - d*n[2]
+    list(c(dn1, dn2))
+  })
+}
+initialN1 <- c(n1hat/2,n2hat/2)
+initialN2 <- c(n1hat/4,n2hat/4)
+initialN3 <- c(2*n1hat, 2*n2hat)
+initialN4 <- c(4*n1hat, 4*n2hat)
+initialN5 <- c(2*n1hat, n2hat/2)
+initialN6 <- c(4*n1hat, n2hat/4)
+
+#Low K (but above k_min)
+k=400
+out.pred1 <- ode(y = initialN1, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred2 <- ode(y = initialN2, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred3 <- ode(y = initialN3, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred4 <- ode(y = initialN4, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred5 <- ode(y = initialN5, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred6 <- ode(y = initialN6, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+
+#plot(n2hat~n1hat,xlim=c(0,2000),ylim=c(0,80),xlab="Prey #", ylab="Predator #",las=1,pch=3,lwd=2, main = "Predator-prey model with satiation")
+plot(NA,xlim=c(0,3000),ylim=c(0,100),xlab="Prey #", ylab="Predator #",las=1,pch=2,lwd=2)
+lines(out.pred1[,3]~out.pred1[,2],lwd=1.5,col="dodgerblue1")
+lines(out.pred2[,3]~out.pred2[,2],lwd=1.5,col="dodgerblue2")
+lines(out.pred3[,3]~out.pred3[,2],lwd=1.5,col="dodgerblue3")
+lines(out.pred4[,3]~out.pred4[,2],lwd=1.5,col="dodgerblue4")
+lines(out.pred5[,3]~out.pred5[,2],lwd=1.5,col="skyblue2")
+lines(out.pred6[,3]~out.pred6[,2],lwd=1.5,col="skyblue3")
+points(n2hat~n1hat,pch=3,lwd=2)
+
+#Jacobian and eigenvalue
+n1 = n1hat
+n2 = n2hat
+jac4 <- matrix(c(eval(D(dn1,"n1")),eval(D(dn1,"n2")),eval(D(dn2,"n1")),eval(D(dn2,"n2"))),nrow=2,byrow=TRUE)
+lambda4=eigen(jac4)
+lambda4
+```
+
+I chose the case of stable node where k_min is at 400. In this I increased the a(prey capture rate) to 0.03 from 0.01 and plotted the graph to understand the change in dynamics. As you can see from the graph with increasing the prey capture rate the number of predators have increased which affected per capita growth rate of prey. Even you can see that equilibrium has changed from stable node to stable focus. Even by looking at the eigen values we can say that by increasing the a (prey capture rate) the stable node transitioned to stable focus.
+
+```{r Decreasing c}
+dn1 = expression(r*n1*(k-n1)/k-c*(1-exp(-a*n1/c))*n2)
+dn2 = expression(b*c*(1-exp(-a*n1/c))*n2-d*n2)
+
+n1hat3 <- expression(-log((b*c-d)/b/c)/a*c)
+n2hat3 <- expression(-r*log((b*c-d)/b/c)*c*b*(k*a+log((b*c-d)/b/c)*c)/k/a^2/d)
+kmin <- (-log((b*c-d)/b/c)/a*c)
+r = 0.7
+a = 0.01
+b = 0.05
+d = 0.12
+c = 7
+k=400
+n1hat <- eval(n1hat3)
+n2hat <- eval(n2hat3)
+kmin_n <- eval(kmin)
+kmin_n
+
+#Numerical solution
+LVpred_satiate <- function (t, n, parms){
+  with(as.list(parms), {
+    dn1 <- r * n[1]*(k-n[1])/k - c*(1-exp(-a*n[1]/c))*n[2]
+    dn2 <- b*c*(1-exp(-a*n[1]/c))*n[2] - d*n[2]
+    list(c(dn1, dn2))
+  })
+}
+initialN1 <- c(n1hat/2,n2hat/2)
+initialN2 <- c(n1hat/4,n2hat/4)
+initialN3 <- c(2*n1hat, 2*n2hat)
+initialN4 <- c(4*n1hat, 4*n2hat)
+initialN5 <- c(2*n1hat, n2hat/2)
+initialN6 <- c(4*n1hat, n2hat/4)
+
+#Low K (but above k_min)
+k=400
+out.pred1 <- ode(y = initialN1, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred2 <- ode(y = initialN2, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred3 <- ode(y = initialN3, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred4 <- ode(y = initialN4, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred5 <- ode(y = initialN5, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+out.pred6 <- ode(y = initialN6, times = 0:100, func = LVpred_satiate, parms=c(r=r,a=a,b=b,d=d,c=c,k=k),method="ode45")
+
+#plot(n2hat~n1hat,xlim=c(0,2000),ylim=c(0,80),xlab="Prey #", ylab="Predator #",las=1,pch=3,lwd=2,main = "Predator-prey model with satiation")
+plot(NA,xlim=c(0,3000),ylim=c(0,100),xlab="Prey #", ylab="Predator #",las=1,pch=2,lwd=2)
+lines(out.pred1[,3]~out.pred1[,2],lwd=1.5,col="dodgerblue1")
+lines(out.pred2[,3]~out.pred2[,2],lwd=1.5,col="dodgerblue2")
+lines(out.pred3[,3]~out.pred3[,2],lwd=1.5,col="dodgerblue3")
+lines(out.pred4[,3]~out.pred4[,2],lwd=1.5,col="dodgerblue4")
+lines(out.pred5[,3]~out.pred5[,2],lwd=1.5,col="skyblue2")
+lines(out.pred6[,3]~out.pred6[,2],lwd=1.5,col="skyblue3")
+points(n2hat~n1hat,pch=3,lwd=2)
+
+#Jacobian and eigenvalue
+n1 = n1hat
+n2 = n2hat
+jac5 <- matrix(c(eval(D(dn1,"n1")),eval(D(dn1,"n2")),eval(D(dn2,"n1")),eval(D(dn2,"n2"))),nrow=2,byrow=TRUE)
+lambda5=eigen(jac5)
+lambda5
+```
+
+I kept all the conditions same as before in stable node and just decreased the c (consumption rate of predators) from 10 to 4.I worked with different values(from 8 to 4, but capture rate of 4 is shown here) just to understand the dynamics. From my understanding as I decreased the consumption rate the population of prey increase little but when I decrease the consumption rate even lower than 7 even the population size of predator decreases.But the interesting thing is even after decreasing the consumption rate the graph is at stable node. The eigen values of the jacobian tells us the same thing that the node is stable as both the values are negative. From what I've understood by decreasing the c the stability didnot change but it affected the population size of the prey and predator.
+
+4.	Explain the biological relevance of your results in 1 and 2.
+
+- After determining the carrying capacity of the prey, it is important to make sure that K has to be more than that of equilibrium of prey to make sure predator population exists. This is needed for both the species to co-exist. But for predator population to persists its is necessary that prey population also persists.
+
+- When the kmin is low but still above carrying capacity of prey, predator vs prey graph indicates the co-existence and stable equilibrium but in non-linear fashion. Even with evigenvalues of jacobian it can be said that the equilibrium is stable as both the values are negative and the real part is 0.
+
+- When the k is increased considerably at 1500, then the graph is stable but focused. All the lines are focusing towards the single point. Looking at the eigen values for this situation we can confirm that real part is negative which means its stable and the imaginary part has two different signs which means it has spiral form.
+
+- When the K is even increased above 1500 like in this situation at 2500, the graphs shows multiple oscillations around the point, which isn't stable. Even when looking at the eigen values we can say that it is unstable focus as the real part of eigen values are positive and the imaginary part has different signs(one is positive and other is negative) which means its focused.
+
+- When satiation is added to the predator population, it helps brings the ecosystem to be in stable equilibrium or in other words adding satiation to predators can bring resource- imposed equilibrium (prey population can increase and plateaus) then there are very less fluctuations in the ecosystem which makes the ecosystem stable and co-existence of both species is possible. But as we increase the k, the prey carrying capacity will be increased more and tries to fight predator which causes the small fluctuations in the population. As k is increased to infinity, the oscillations increase greatly and tries to move away from the point which causes unstability in the ecosystem. It can be said that abundance of the predator and prey are dependent on one another. 
+
+- For example, in two species system where one species is Bug1 and other species is Bug2. Bug 1 is predator while bug 2 is prey. In the normal scenario, bug1 will feed on bug2 obviously it is based on the density of the bug2. If the number of population of bug2 decreases which means avability of bug 2 decreases so the number of bug1 also decrease. but if satiation is added to the predators then bug1 can feed on bug2 upto a certain limit so the rate of consumption of prey is capped and beyond that prey population increases but after sometime it levels or plateaus.This is functional response type 2 In this situation when the k of bug2 is increased to infinity then it can cause unstability in the ecosystem.
+
+
+References
+1. https://www.researchgate.net/figure/The-Intermediate-Disturbance-Hypothesis-Connell-1978-Low-diversity-is-hypothesised-at_fig1_46663637
+2. https://web.ma.utexas.edu/users/davis/375/popecol/lec9/equilib.html
