@@ -1,0 +1,299 @@
+---
+title: "Modeling growth of cancer cells"
+author: "Vyoma Sheth"
+output:
+  pdf_document: default
+  html_document: default
+Date: 12/5/2020
+---
+
+```{r setup, include=FALSE}
+# Chunk option to make sure code output is shown in the knit file
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+
+# Chunk option to make sure code lines don't run of page and just go to next line (not perfect, but helps)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r packages}
+library(deSolve)
+library(Ryacas)
+```
+
+Introduction:
+Understanding the growth of cancer is very complex. It starts with the process of cell differentiation which then results in cell proliferation. There are many ways the cell can proliferate and many factors that can play role in the growth of the cell over time. During the proliferation of cancer cells, cancer cells can come in contact with immune cells, cytokines, lymphocytes, fibroblasts, endothelial cells etc and this is defined as the tumor microenvironment. The interactions between cancer cells and its environments keeps on changing. It is important to have an understanding of the growth of tumor cells independently without its interaction with its microenvironment to understand how it will react with other cells when it comes in contact.
+
+
+<font size = "7">One Equation model </font>
+
+<font size = "5">Exponential growth </font>
+
+Cancer cells are neoplastic cells, and they proliferate exponentially. This was the model that was used to define the growth of cancer, but it doesn’t explain the tumor growth in the body. It just explains the overview of the tumor growth. The nature of cancer cells.
+
+Equation for exponential growth is as below:
+
+$$\frac{dc}{dt} = alpha*c - beta*c$$
+
+$$\frac{dc}{dt} = (alpha-beta)*c$$
+
+$$\frac{dc}{dt} = lamda(t)*c$$
+
+where alpha is the rate of cell differentiation and beta is cell death, so after substitution lamda is the rate of growth
+
+```{r lamda=0}
+Tum_exp <- expression(exp(lamda*t)*c)
+
+c = 50
+lamda=0 #alpha=beta
+t=seq(from=1,to=10,by=0.05)
+
+Tum_exp_vals <- eval(Tum_exp)
+
+plot(Tum_exp_vals,type="l",
+     ylab="Population",
+     xlab="Time",
+     main = "Exponential growth (alpha = beta)",
+     col="blue",
+     lwd = 2, cex = 1.5)
+
+```
+
+
+```{r lamda>0}
+Tum_exp <- expression(exp(lamda*t)*c)
+
+c = 50
+lamda=1 #alpha>beta
+t=seq(from=1,to=10,by=0.05)
+
+Tum_exp_vals <- eval(Tum_exp)
+
+plot(Tum_exp_vals,type="l",
+     ylab="Population",
+     xlab="Time",
+     main = "Exponential growth (alpha > beta)",
+     col="blue",
+     lwd = 2, cex = 1.5)
+```
+
+```{r lamda<0}
+Tum_exp <- expression(exp(lamda*t)*c)
+
+c = 50
+lamda=-1 #alpha<beta
+t=seq(from=1,to=10,by=0.05)
+
+Tum_exp_vals <- eval(Tum_exp)
+
+plot(Tum_exp_vals,type="l",
+     ylab="Population",
+     xlab="Time",
+     main = "Exponential growth (alpha < beta)",
+     col="blue",
+     lwd = 2, cex = 1.5)
+```
+
+
+<font size = "5"> Logistic growth </font>
+
+Logistic growth:
+This type of growth will increase initially and then it plateaus at it reaches the carrying capacity. This type of growth  take into account what happens when the cancer growth in vivo.
+
+```{r logistic growth}
+delta_c = expression(lamda*(1-c/k)*c)
+lamda<-1         #Growth rate
+k<-1000          #Carrying capacity
+c<-seq(0,1000)   #Cancer cells
+
+LogMod <- function (time, y, parms) {
+  with(as.list(c(y, parms)), {
+    dc <-   lamda * c * (1 - c / K)
+    list(c(dc))
+  })
+}
+
+#Define Parameters
+y0     <- c(c = 1000 )
+parms  <- c(lamda = 1, K = 10000)
+times  <- seq(1, 20, 0.1)
+
+tum_logistic <- ode(y0, times, LogMod, parms) 
+
+# Plot the graph
+plot(tum_logistic,type="l",
+     ylab="Cancer cell Population",
+     xlab="Time",
+     main = "Logistic growth ",
+     col="red",
+     lwd = 2, cex = 1.5)
+```
+
+
+<font size = "5">Gompterz Growth </font>
+
+Gompterz growth:
+This type of growth is very similar to the logistic growth and the difference is in the sharpness of decrease growth when it moves towards K(carrying capacity). By looking at the Gompterz growth function it can be said that it is the negative growth of the cancer cells. Fr small population the growth is accelerating but as we move to large populations the growth decelerates. This type of growth is mostly sigmoidal.
+
+Gompterz growth is mostly used to detect the initial stage tumor in patients. Mostly in breast cancer patients to initially diagnose the condition of tumor and to plan the therapy. Based on this model one can incorporate different elements of tumor microenvironment and see the interactions between cancer cells and tumor micro-enviornment.
+
+
+```{r}
+delta_c = expression(-lamda * c *log(c/K))
+
+LogMod <- function (time, y, parms) {
+  with(as.list(c(y, parms)), {
+    dc <-   -lamda * c  *log(c/K)
+    list(c(dc))
+  })
+}
+y0     <- c(c = 1000)
+parms  <- c(lamda = 1, K = 10000)
+times  <- seq(1, 20, 0.1)
+gompterz0.5 <- ode(y0, times, LogMod, parms) 
+# Plot the graph
+plot(gompterz0.5,type="l",
+     ylab="Cancer cell Population",
+     xlab="Time",
+     main = "Gompterz growth ",
+     col="navy",
+     lwd = 2, cex = 1.5,
+     xaxs ="i", yaxs= "i",
+     ylim = c(0,10000))
+
+y0     <- c(c = 1000)
+parms  <- c(lamda = 0.75, K = 10000)
+times  <- seq(1, 20, 0.1)
+gompterz0.75 <- ode(y0, times, LogMod, parms)
+lines(gompterz0.75,type = "l", lwd=2, col="green")
+legend(x = 10, y=6000,legend = c("K=0.75", "K=1"),
+text.col = c("green","blue"))
+```
+
+<font size = "5">Gompterz Growth with Anti-Tumor Treatment </font>
+
+This model shows how the growth of cancer cells is affected when patient with cancer cells having gompterz growth is subjected to anti-tumorogenic agent.
+
+```{r}
+delta_c = expression(-lamda * c *log(c/K) - gamma * c)
+LogMod <- function (time, y, parms) {
+  with(as.list(c(y, parms)), {
+    dc <-   -lamda * c  *log(c/K) - gamma * c
+    list(c(dc))
+  })
+}
+y0     <- c(c = 2)
+parms  <- c(lamda = 1, K = 10000, gamma = 0.5)
+times  <- seq(1, 20, 0.1)
+Tum_tt <- ode(y0, times, LogMod, parms) 
+# Plot the graph
+plot(Tum_tt,type="l",
+     ylab="Cancer cell Population",
+     xlab="Time",
+     main = "Gompterz growth w/ anti-tumor therapy ",
+     col="navy",
+     lwd = 2, cex = 1.5,
+     xaxs ="i", yaxs= "i",
+     ylim = c(0,10000))
+```
+
+Looking at the graph, it can inferred that there is significant decrease in the size of the tumor. During the gompterz growth it can be said that tumor size was of 1000 cells but after subjecting it to anti-tumorogenic agent the tumor size decreased till 6000 cells.
+
+<font size = "7">Two equation model </font>
+
+The two equation model incorporates the interaction of cancer cell with immune cells. This makes cancer growth model to be more complex. Immune cells are the host defense mechanism against any infection or any foreign or unwanted thing in body. So immune cells try to fight the cancer cells. When cancer cells grow it releases certain chemicals that trigger the immune cells. The immune effector cells then try and control the tumor growth. In this process, it can be said that immune cells are predator and tumor cells are the prey. Thus making their interactions predator-prey type.
+
+
+
+```{r}
+dc = expression(c * (a(1-B * c)) -  c * i)
+di = expression((theta * c*i/(g+c)) - m*c*i - i* d + s)
+
+dc <- simplify(ysym(dc))
+dc
+di <- simplify(ysym(di))
+di
+
+
+LogMod <- function (time, y, parms) {
+  with(as.list(c(y, parms)), {
+    dc <- expression(c*a*(1-B*c)-c*i)
+    di <- expression((theta*c*i+c*s-(c*i*d+c*i*g*m)-c^2*i*m+g*s-i*g*d)/(c+g))
+    dc <- eval(dc)
+    di <- eval(di)
+   
+    list(c(dc,di))
+  })
+}
+
+y0     <- c(c = 50,            #Cancer cells
+            i = 50 )           #Immune cells
+parms  <- c(a = 1.636,         #cell proliferation
+            B = 2*10^-3,       #cancer cells death
+            theta = 1.131,     #part of immune growth term
+            g = 20.19,         #part of immune growth term
+            m = 0.00311,       #death immune cells due to interaction with cancer cells
+            d = 0.1908,        #apoptosis(cell death)
+            s = 0.1181)        #Production of immune cells / time dependent treatment
+times  <- seq(1, 20, 0.1)
+out2 <- ode(y0, times, LogMod, parms) 
+plot(out2[,2],type="l",
+     lwd=2,
+     col="blue", 
+     ylab = "Population size of cells", 
+     xlab = "time", 
+     main = "Growth of cancer cells in presence of immune cells")
+lines(out2[,3],type="l",
+      lwd=2,
+      col="green")
+legend(x = 100, y=40,legend = c("immune_growth", "cancer_growth"),
+text.col = c("green","blue"))
+
+
+y0     <- c(c = 50, i = 300 )
+parms  <- c(a = 1.636,B = 4*10^-3,theta = 1.131,g = 20.19,m = 0.00311,d = 2.0,s = 0.1181)
+times  <- seq(1, 20, 0.1)
+out2 <- ode(y0, times, LogMod, parms)
+plot(out2[,3],type="l",lwd=2,col="green", ylab = "Population size of cells", xlab = "time", main = "Growth of cancer cells in presence of immune cells")
+
+y0     <- c(c = 50, i = 5 )
+parms  <- c(a = 1.636,B = 4*10^-3,theta = 1.131,g = 20.19,m = 0.00311,d = 2.0,s = 0.1181)
+times  <- seq(1, 20, 0.1)
+out2 <- ode(y0, times, LogMod, parms) 
+lines(out2[,2],type="l",lwd=2,col="blue")
+legend(x = 100, y=150,legend = c("immune_growth", "cancer_growth"),
+text.col = c("green","blue"))
+```
+
+
+<font size = "5"> Stability analysis </font>
+
+```{r}
+dc <- expression(c*a*(1-B*c)-c*i)
+di <- expression((gamma*c*i+c*s-(c*i*d+c*i*g*m)-c^2*i*m+g*s-i*g*d)/(c+g))
+
+dc_prime = "(c*a*(1-B*c)-c*i)"
+dc_prime <- ysym(dc_prime)
+#Get the equilibria (i.e. the roots)
+dc_hat1<-simplify(solve(dc_prime,'c')) #This seems incorrect or at least not simple enough
+dc_hat1
+
+di_prime <- "(gamma*c*i+c*s-(c*i*d+c*i*g*m)-c^2*i*m+g*s-i*g*d)/(c+g)"
+di_prime <- ysym(di_prime)
+di_hat1 <- simplify(solve(di_prime,'i'))
+di_hat1
+
+n1 = dc_hat1
+n2 = di_hat1
+jac <- matrix(c(eval(D(dc,"n1")),eval(D(dc,"n2")),eval(D(di,"n1")),eval(D(di,"n2"))),nrow=2,byrow=TRUE)
+lambda=eigen(jac)
+lamda
+
+```
+
+
+References:
+1 . Bull Math Biol (2011) 73:Interactions Between the Immune System and Cancer: A Brief Review of Non-spatial Mathematical Models, 2–32 DOI 10.1007/s11538-010-9526-3
+
+2. http://www.mcs.st-andrews.ac.uk/~majc/enderling_chaplain2014.pdf
+
+3. https://www.dfmf.uned.es/medphys/files/sdarticle-33.pdf

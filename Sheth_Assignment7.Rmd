@@ -1,0 +1,64 @@
+---
+title: "Sheth_Assignment7"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(Ryacas)
+library(deSolve)
+```
+
+```{r ode}
+gpp <- expression(151.2820512820513*exp(4.3e-2*deltat)*pco2*
+                    (-log(-1.475*pco2*exp(4.3e-2*deltat)/(-5.9*exp(4.3e-2*deltat)*pco2+383*r*exp(nu*deltat)+r*exp(nu*deltat)*pco2))+0.2231435513142098)/(383+pco2))
+r <- 0.39
+nu <- 0.086
+pco2 <- seq(250,500,by=10)
+deltats <- c(-1,0,1,2,3,4)
+deltat<-deltats[1]
+plot(eval(gpp)~pco2,type="l",lwd=1.5,ylab="Flux of carbon (Pg/yr)",ylim=c(80,150))
+deltat<-deltats[2]
+lines(eval(gpp)~pco2,lwd=1.5,col="green")
+deltat<-deltats[3]
+lines(eval(gpp)~pco2,lwd=1.5,col="yellow")
+deltat<-deltats[4]
+lines(eval(gpp)~pco2,lwd=1.5,col="orange")
+deltat<-deltats[5]
+lines(eval(gpp)~pco2,lwd=1.5,col="firebrick")
+biospher <- function(t, x, parms){
+  g=eval(gpp)
+  d=exp(nu*deltat)
+  with(as.list(parms), {
+    xdot1 <- 0.65*0.8*(g-r*d*x[1])-x[1]/2
+    xdot2 <- 0.35*0.8*(g-r*d*x[1])-x[2]/33
+    xdot3 <- x[1]/2-d*(1+1/100)*x[3]
+    xdot4 <- x[2]/33-d*(1/20+1/100)*x[4]
+    xdot5 <- d*((x[3]+x[4])/100-x[5]/400)
+    list(c(xdot1,xdot2,xdot3,xdot4,xdot5))
+  })
+}
+x1990 <- c(77,639,30,313,1217) #These are starting values for 1990 carbon pools
+time=200
+# out <- ode(y = x1990, times = seq(0,time), func = biospher,
+#                parms=c(pco2=pco2_gw,deltat=deltat_gw,gpp=gpp,r=r,nu=nu),method="ode45")
+# x_total <- rowSums(out[,2:6])
+# xhat_total <- x1hat_n+x2hat_n+x3hat_n+x4hat_n+x5hat_n
+
+
+
+
+pco2_gw <- ysym('413*Exp(a*t)')
+a = solve(ysym('413*Exp(a*(1990-2019))-350'),'a')
+a <- as_r(y_rmvars(a))
+pco2_gw <- yac(paste("Eliminate(a,", a, ",",pco2_gw,")")) #This gives an exponential function that works
+pco2_gw <- parse(text=paste("413*exp(",a,"*t)",sep="")) #If needed as R expression
+
+#Uses "lm()", same answer
+expon <- lm(log(c(350,413))~c(1990,2019))
+a.lm<-expon$coefficients[2]
+pco2_gw <- parse(text=paste("413*exp(",a.lm,"*t)",sep=""))
+```

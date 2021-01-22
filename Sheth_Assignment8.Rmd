@@ -1,0 +1,458 @@
+---
+title: "Sheth_Assignment8"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+# Chunk option to make sure code output is shown in the knit file
+knitr::opts_chunk$set(echo = TRUE)
+
+# Chunk option to make sure code lines don't run of page and just go to next line (not perfect, but helps)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+x--------------Question 1----------------x
+
+**1.Draw a graph showing the distribution of clutch sizes for this example. Use the same probabilities of 0 offspring (p=0.25), 1 offspring (p=0.5), and 2 offspring (p=0.25) as we did previously.**
+
+```{r}
+clutch_size <- c()
+dem.stoch <- function(p0,p1,n0,times){
+  n=n0
+  for (i in 1:times){
+    new_n = 0
+    if (n[i]==0){
+      n <- c(n, new_n)
+    }else{
+      for (j in 1:n[i]){
+        luck = runif(1)
+        if (luck < p0){
+          new_n = new_n
+          clutch_size <<- append(clutch_size, 0)
+         
+        }else{
+          if (luck < p0 + p1){
+            new_n = new_n + 1
+             clutch_size <<- append(clutch_size, 1)
+          }else{
+            new_n = new_n + 2
+             clutch_size <<- append(clutch_size, 2)
+            }
+        }
+      }      
+      n <- c(n, new_n)
+    }
+  }
+  return(n)
+}
+popsize4 <- dem.stoch(0.25,0.5,4,100)
+hist(clutch_size)
+```
+
+#For question 1.1, I used the same code as the one used in the lecture. The only difference is I created an empty vector clutch_size to store all the values of clutch size based on runif function. I appended all the probability of having 0, 1 and 2 offspring in clutch_size vector and plotting histogram for the clutch size vector.
+
+*2. Using what we talked about in class in terms of probability distributions, redo this code in a way that uses a different function to get the same distribution. In other words, your code should not have “runif” in it. Explain your work and draw the same plot with data generated in this way.*
+
+```{r}
+clutch_size1 <- c()
+dem.stoch <- function(n0,times){
+  n=n0
+  for (i in 1:times){
+    new_n = 0
+    if (n[i]==0){
+      n <- c(n, new_n)
+    }else{
+      for (j in 1:n[i]){
+        luck = rbinom(n = 1, size = 1, p = 0.5)
+        if (luck == 1){
+          new_n = new_n + 1
+          clutch_size1 <<- append(clutch_size1,1)
+        }else{
+          luck = rbinom(n = 1, size = 1, p = 0.5)
+          if (luck ==0){
+            new_n = new_n + 0
+             clutch_size1 <<- append(clutch_size1, 0)
+          }else{
+            new_n = new_n + 2
+             clutch_size1 <<- append(clutch_size1, 2)
+            }
+        }
+      }      
+      n <- c(n, new_n)
+    }
+  }
+  return(n)
+}
+popsize4 <- dem.stoch(4,100)
+hist(clutch_size1)
+```
+
+#I tried using Bionomial distribution in place of Uniform distribution we used in class. I made some minor modification to the code that I've used before. As bionomial distribution provides boolean values (which means its either head or tails) so I tried using conditional statements which suggests there is 50% probability that we will get 1 when rbinom function is used. So if we get 1 the we append it to clutch size but if we don't get 1 then again run the rbinom function with same 0.5 probability if we get 0 (which means 0 off spring)then assign it clutch size or else consider the 2 offspring and assign it to clutch size as 2. I was able to plot the same graph as I obtained using the runif function.
+
+```{r}
+clutch_size1 <- c()
+dem.stoch <- function(p0,p1,n0,times){
+  n=n0
+  for (i in 1:times){
+    new_n = 0
+    if (n[i]==0){
+      n <- c(n, new_n)
+    }else{
+      for (j in 1:n[i]){
+        luck = rpois(n = 1, lambda = 1)
+        if (luck < p0){
+          new_n = new_n
+          clutch_size1 <<- append(clutch_size1, 0)
+         
+        }else{
+          if (luck < p0 + p1){
+            new_n = new_n + 2
+             clutch_size1 <<- append(clutch_size1, 2)
+          }else{
+            new_n = new_n + 1
+             clutch_size1 <<- append(clutch_size1, 1)
+            }
+        }
+      }      
+      n <- c(n, new_n)
+    }
+  }
+  return(n)
+}
+popsize41 <- dem.stoch(0.25,0.5,4,100)
+print(clutch_size1)
+hist(clutch_size1)
+
+```
+
+#I tried using rpois function but i don't know how else to move forward with this. 
+
+
+x---------------Question2-------------------------x
+
+```{r}
+SI.simul <- function (x, params, nstep) {
+  ## set up an array to store results
+  output <- array(dim=c(nstep+1,3))       
+  ## name the variables in the array
+  colnames(output) <- c("time","X","Y")   
+  output[1,] <- x # initial condition
+  ## iterate the model for nstep events
+  for (k in 1:nstep) {
+    ## update x and store result
+    output[k+1,] <- x <- SI.onestep(x,params) 
+  }
+  as.data.frame(output)
+}
+SI.onestep <- function (x, params) {     
+  ## the second element of x is number of susceptibles X
+  X <- x[2]
+  ## the third element of x is number of infecteds Y
+  Y <- x[3]                             
+  event.rate <- params["beta"]*X*Y/(X+Y)
+  ## how much time do we wait for this event?
+  tau <- rexp(n=1,rate=event.rate) 
+  c(tau=x[1]+tau,X=X-1,Y=Y+1)
+}
+set.seed(38499583)    # make results repeatable
+nsims <- 10           # number of simulations to run
+pop.size <- 200       # size of the population
+Y0 <- 2               # initial number infected
+nstep <- pop.size-Y0  # run until everyone infected
+xstart <- c(time=0,X=(pop.size-Y0),Y=Y0)  # initial conditions
+params <- c(beta=60,gamma=365/13)         # parameters (R0=2.1)
+simdat <- vector(mode='list',length=nsims) # to store simulated data
+for (k in 1:nsims) {
+  simdat[[k]] <- SI.simul(xstart,params,nstep)
+}
+
+trange <- range(sapply(simdat,function(x)range(x$time)))
+yrange <- range(sapply(simdat,function(x)range(x$Y)))
+
+plot(trange,yrange,type='l',xlab='time',ylab="infected individuals",bty='l', main = "Infected individuals with B=60, N = 200")
+for (k in 1:nsims)
+  lines(Y~time,data=simdat[[k]],col=k,type='o',pch=10)
+```
+
+**1.	Is this a model with density dependent or frequency dependent transmission?**
+
+#By looking at the average rate of transmission equations for S, I, R, it can be said that model is frequency dependent. Because from the lectures that we have studied, density dependent equation does depend on N so its equation for infection (dI/dt) look like B * I but looking at the equation used in the model (B * I / N). This means they made the equation independent of population density. Even while researching through some papers, I found out that typical equation for Frequency dependent looks like this "dI/dt = B * S * I / N"
+
+2.	Using a beta parameter for a disease of your choosing conduct some experiments with different beta values and population sizes. Do you need to change the transmission type (frequency vs density)? Plot the outcomes (similar to link above).
+
+```{r Serria_Leone}
+SI.simul <- function (x, params, nstep) {
+  ## set up an array to store results
+  output <- array(dim=c(nstep+1,3))       
+  ## name the variables in the array
+  colnames(output) <- c("time","X","Y")   
+  output[1,] <- x # initial condition
+  ## iterate the model for nstep events
+  for (k in 1:nstep) {
+    ## update x and store result
+    output[k+1,] <- x <- SI.onestep(x,params) 
+  }
+  as.data.frame(output)
+}
+SI.onestep <- function (x, params) {     
+  ## the second element of x is number of susceptibles X
+  X <- x[2]
+  ## the third element of x is number of infecteds Y
+  Y <- x[3]                             
+  event.rate <- params["beta"]*X*Y/(X+Y)
+  ## how much time do we wait for this event?
+  tau <- rexp(n=1,rate=event.rate) 
+  c(tau=x[1]+tau,X=X-1,Y=Y+1)
+}
+set.seed(38499583)    # make results repeatable
+nsims <- 10           # number of simulations to run
+pop.size <- 200       # size of the population
+Y0 <- 2               # initial number infected
+nstep <- pop.size-Y0  # run until everyone infected
+xstart <- c(time=0,X=(pop.size-Y0),Y=Y0)  # initial conditions
+params <- c(beta=0.27,gamma=365/13)         # parameters (R0=2.1)
+simdat <- vector(mode='list',length=nsims) # to store simulated data
+for (k in 1:nsims) {
+  simdat[[k]] <- SI.simul(xstart,params,nstep)
+}
+
+trange <- range(sapply(simdat,function(x)range(x$time)))
+yrange <- range(sapply(simdat,function(x)range(x$Y)))
+
+plot(trange,yrange,type='l',xlab='time',ylab="infected individuals",bty='l', main = "Infected individuals with B=0.27, N = 200")
+for (k in 1:nsims)
+  lines(Y~time,data=simdat[[k]],col=k,type='o',pch=10)
+```
+
+#I found paper that modeled the different spread of Ebola in different regions of West Africa. This graphs shows the value of B decreased from 60 to 0.27. Decreasing transmission rate took longer period of time to have all the indivials infected which makes sense.
+
+```{r}
+SI.simul <- function (x, params, nstep) {
+  ## set up an array to store results
+  output <- array(dim=c(nstep+1,3))       
+  ## name the variables in the array
+  colnames(output) <- c("time","X","Y")   
+  output[1,] <- x # initial condition
+  ## iterate the model for nstep events
+  for (k in 1:nstep) {
+    ## update x and store result
+    output[k+1,] <- x <- SI.onestep(x,params) 
+  }
+  as.data.frame(output)
+}
+SI.onestep <- function (x, params) {     
+  ## the second element of x is number of susceptibles X
+  X <- x[2]
+  ## the third element of x is number of infecteds Y
+  Y <- x[3]                             
+  event.rate <- params["beta"]*X*Y/(X+Y)
+  ## how much time do we wait for this event?
+  tau <- rexp(n=1,rate=event.rate) 
+  c(tau=x[1]+tau,X=X-1,Y=Y+1)
+}
+set.seed(38499583)    # make results repeatable
+nsims <- 10           # number of simulations to run
+pop.size <- 100       # size of the population
+Y0 <- 2               # initial number infected
+nstep <- pop.size-Y0  # run until everyone infected
+xstart <- c(time=0,X=(pop.size-Y0),Y=Y0)  # initial conditions
+params <- c(beta=0.27,gamma=365/13)         # parameters (R0=2.1)
+simdat <- vector(mode='list',length=nsims) # to store simulated data
+for (k in 1:nsims) {
+  simdat[[k]] <- SI.simul(xstart,params,nstep)
+}
+
+trange <- range(sapply(simdat,function(x)range(x$time)))
+yrange <- range(sapply(simdat,function(x)range(x$Y)))
+
+plot(trange,yrange,type='l',xlab='time',ylab="infected individuals",bty='l', main = "Infected individuals with B=0.27, N = 100")
+for (k in 1:nsims)
+  lines(Y~time,data=simdat[[k]],col=k,type='o',pch=10)
+```
+
+#Keeping the infection rate same, I decreased the population size that comes in contact. This cause the decrease in time to get all individals infected. It took about 40 years to have all individuals infecteed if the B, transmission rate is also decreased and even individuals are also decreased from 200 to 100
+
+```{r Guniea_params}
+SI.simul <- function (x, params, nstep) {
+  ## set up an array to store results
+  output <- array(dim=c(nstep+1,3))       
+  ## name the variables in the array
+  colnames(output) <- c("time","X","Y")   
+  output[1,] <- x # initial condition
+  ## iterate the model for nstep events
+  for (k in 1:nstep) {
+    ## update x and store result
+    output[k+1,] <- x <- SI.onestep(x,params) 
+  }
+  as.data.frame(output)
+}
+SI.onestep <- function (x, params) {     
+  ## the second element of x is number of susceptibles X
+  X <- x[2]
+  ## the third element of x is number of infecteds Y
+  Y <- x[3]                             
+  event.rate <- params["beta"]*X*Y/(X+Y)
+  ## how much time do we wait for this event?
+  tau <- rexp(n=1,rate=event.rate) 
+  c(tau=x[1]+tau,X=X-1,Y=Y+1)
+}
+set.seed(38499583)    # make results repeatable
+nsims <- 10           # number of simulations to run
+pop.size <- 200       # size of the population
+Y0 <- 2               # initial number infected
+nstep <- pop.size-Y0  # run until everyone infected
+xstart <- c(time=0,X=(pop.size-Y0),Y=Y0)  # initial conditions
+params <- c(beta=0.02,gamma=365/13)         # parameters (R0=2.1)
+simdat <- vector(mode='list',length=nsims) # to store simulated data
+for (k in 1:nsims) {
+  simdat[[k]] <- SI.simul(xstart,params,nstep)
+}
+
+trange <- range(sapply(simdat,function(x)range(x$time)))
+yrange <- range(sapply(simdat,function(x)range(x$Y)))
+
+plot(trange,yrange,type='l',xlab='time',ylab="infected individuals",bty='l', main = "Infected individuals with B=0.20, N = 200")
+for (k in 1:nsims)
+  lines(Y~time,data=simdat[[k]],col=k,type='o',pch=10)
+```
+
+#For the Guniea, the B was 0.20 so I reduced the B from 60 to 0.20 and time required for all the individuals to get infected increased to about 800 years.
+
+```{r Guniea}
+SI.simul <- function (x, params, nstep) {
+  ## set up an array to store results
+  output <- array(dim=c(nstep+1,3))       
+  ## name the variables in the array
+  colnames(output) <- c("time","X","Y")   
+  output[1,] <- x # initial condition
+  ## iterate the model for nstep events
+  for (k in 1:nstep) {
+    ## update x and store result
+    output[k+1,] <- x <- SI.onestep(x,params) 
+  }
+  as.data.frame(output)
+}
+SI.onestep <- function (x, params) {     
+  ## the second element of x is number of susceptibles X
+  X <- x[2]
+  ## the third element of x is number of infecteds Y
+  Y <- x[3]                             
+  event.rate <- params["beta"]*X*Y/(X+Y)
+  ## how much time do we wait for this event?
+  tau <- rexp(n=1,rate=event.rate) 
+  c(tau=x[1]+tau,X=X-1,Y=Y+1)
+}
+set.seed(38499583)    # make results repeatable
+nsims <- 10           # number of simulations to run
+pop.size <- 1000       # size of the population
+Y0 <- 2               # initial number infected
+nstep <- pop.size-Y0  # run until everyone infected
+xstart <- c(time=0,X=(pop.size-Y0),Y=Y0)  # initial conditions
+params <- c(beta=0.20,gamma=365/13)         # parameters (R0=2.1)
+simdat <- vector(mode='list',length=nsims) # to store simulated data
+for (k in 1:nsims) {
+  simdat[[k]] <- SI.simul(xstart,params,nstep)
+}
+
+trange <- range(sapply(simdat,function(x)range(x$time)))
+yrange <- range(sapply(simdat,function(x)range(x$Y)))
+
+plot(trange,yrange,type='l',xlab='time',ylab="infected individuals",bty='l', main = "Infected individuals with B=0.20, N = 1000")
+for (k in 1:nsims)
+  lines(Y~time,data=simdat[[k]],col=k,type='o',pch=10)
+```
+
+#In the this case, I kept the B at 0.2 and increased the individuals to 1000 which increased the time for all the individuals to get infected has increased. frequency of people bumping into eachother increased but the transmission rate is less so it takes longer time to get all the individuals get infected.
+
+#If the transmission rates are increased and also the population size is more to begin with then more population infected individuals will be more. This is frequency dependent model as when I try to change the values there isn't drastic change in the curve like we used to get when we change the values for SIR model in class. The change is seen in the time period to get all the individuals to get affected. So if you increase the B - transmission rate in small population then all there is decrease in time period for all the individuals to get infected. From this it can be said that contact rate of individual is independent of the population density. From this it can be said that it is frequency dependent model.
+
+
+**3.	Explain the difference in outcomes between the stochastic model and the deterministic model we studied previously.**
+
+#- Deterministic models means who's parameters and initial conditions are determined. while in stochastic there is randomness means everytime you run your code you will get different outputs for same parameters and initial values.
+
+#- Deterministic models are used to predict the future events precisely as it depends on the previous step to predict the future step. Stochastic model are used when you want to see the rare events or even when the population sizes are too small.
+
+#- Deterministic models are mostly used to find out the equilibrium values and also to in definite process. The stochastic models are used to see how the small population is affected by environment
+
+**Extra credit (7 points):
+See if you can include a recovered class in the model above. You can work from the link above as an guide, but retain the fixed population size (no births or deaths). Plot the outcome.**
+
+```{r}
+SIR.onestep <- function (x, params) {
+  X <- x[2]
+  Y <- x[3]
+  Z <- x[4]
+  N <- X+Y+Z
+  beta <- params["beta"]
+  mu <- params["mu"]
+  gamma <- params["gamma"]
+  ## each individual rate
+  rates <- c(
+    birth=mu*N,
+    infection=beta*X*Y/N,
+    recovery=gamma*Y,
+    sdeath=mu*X,
+    ideath=mu*Y,
+    rdeath=mu*Z
+  )
+  ## what changes with each event?
+  transitions <- list( 
+    birth=c(0,0,0),
+    infection=c(-1,1,0),
+    recovery=c(0,-1,1),
+    sdeath=c(0,0,0),
+    ideath=c(0,0,0),
+    rdeath=c(0,0,0)
+  )
+  ## total event rate
+  total.rate <- sum(rates)
+  ## waiting time
+  if (total.rate==0) 
+    tau <- Inf
+  else
+    tau <- rexp(n=1,rate=total.rate)
+  ## which event occurs?
+  event <- sample.int(n=6,size=1,prob=rates/total.rate)
+  x+c(tau,transitions[[event]])
+}
+SIR.simul <- function (x, params, maxstep = 10000) {
+  output <- array(dim=c(maxstep+1,4))
+  colnames(output) <- names(x)
+  output[1,] <- x
+  k <- 1
+  ## loop until either k > maxstep or
+  ## there are no more infectives
+  while ((k <= maxstep) && (x["Y"] > 0)) {
+    k <- k+1
+    output[k,] <- x <- SIR.onestep(x,params)
+  }
+  as.data.frame(output[1:k,])
+}
+set.seed(56856583)
+nsims <- 10
+xstart <- c(time=0,X=392,Y=8,Z=0) #initial conditions
+params <- c(mu=0.02,beta=60,gamma=365/13) #parameters
+
+require(plyr)
+simdat <- rdply(
+  nsims,
+  SIR.simul(xstart,params)
+)
+head(simdat)
+plot(Y~time,data=simdat,type='n')
+d_ply(simdat,".n",function(x)lines(Y~time,data=x,col=.n))
+```
+
+**How stochasticity can alter dynamics when infected individuals can recover.**
+
+#Stochasticity produces the random output based on the parameters. So If there is stochasticity included in the above model then it can change the contact rate. There is possiblity that pathogen can wipe out the host  But if the population size if fixed then infected individuals can come in contact with eachother more and recovery rate is reduced. If there is possibility of new birth then it can allow more population to recover as population sized will increase.
+
+**References:**
+1. https://parasiteecology.wordpress.com/2013/10/17/density-dependent-vs-frequency-dependent-disease-transmission/
+
+2. https://evoq-eval.siam.org/Portals/0/Publications/SIURO/Vol9/Modeling_Spread_of_Ebola_with_SEIR.pdf?ver=2018-04-06-152054-020
+
+3. http://evoq-eval.siam.org/Portals/0/Publications/SIURO/Vol9/MATHEMATICAL_MODELING_OF_THE_2014_2015_EBOLA.pdf?ver=2018-04-06-152054-053

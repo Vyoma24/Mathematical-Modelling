@@ -1,0 +1,365 @@
+---
+title: "Modeling growth of cancer cells"
+author: "Vyoma Sheth"
+output:
+  html_document: default
+  pdf_document: default
+Date: 12/5/2020
+---
+
+```{r setup, include=FALSE}
+# Chunk option to make sure code output is shown in the knit file
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+
+# Chunk option to make sure code lines don't run of page and just go to next line (not perfect, but helps)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r packages}
+library(deSolve)
+library(Ryacas)
+```
+
+Outline:
+
+- Introduction
+
+- Methods(Code and explanation)
+
+- Conclusion
+
+- Discussion/Future directions
+
+
+Introduction:
+Understanding the growth of cancer is very complex. It starts with the process of cell differentiation which then results in cell proliferation. There are many ways the cell can proliferate and many factors that can play role in the growth of the cell over time. During the proliferation of cancer cells, cancer cells can come in contact with immune cells, cytokines, lymphocytes, fibroblasts, endothelial cells etc and this is defined as the tumor microenvironment. The interactions between cancer cells and its environments keeps on changing. It is important to have an understanding of the growth of tumor cells independently without its interaction with its microenvironment to understand how it will react with other cells when it comes in contact.
+
+The project provides an understanding of how the tumor growth proliferates independently (without any involving microenviornment). Once the concept is clear, at each step a different interaction is shown and explained how the tumor growth dynamics work when subjected to anti-tumorogenic agent and how cancer cells interact with immune cells.To understand how the system is evolving, stability analysis is performed which will be helpful if many other parameters are taken into account.
+
+
+
+Method (Code and explanation):
+
+<font size = "10">One Equation model </font>
+
+<font size = "5">Exponential growth </font>
+
+Cancer cells are neoplastic cells, and they proliferate exponentially. This was the model that was used to define the growth of cancer, but it doesn’t explain the tumor growth in the body. It just explains the overview of the tumor growth. The nature of cancer cells.
+
+Equation for exponential growth is as below:
+
+$$\frac{dc}{dt} = alpha*c - beta*c$$
+
+$$\frac{dc}{dt} = (alpha-beta)*c$$
+
+$$\frac{dc}{dt} = lamda(t)*c$$
+
+where alpha is the rate of cell differentiation and beta is cell death, so after substitution lamda is the rate of growth. I've tried to plot the graph for different values of lamba to understand the growth rate. When lamda is equal to 0 then there is no growth rate. But when lamda is positive than tumor growth is exponential which means tumor cells will grow uncontrollably. The last graph shows what happens when lamda is negative. The tumor cells will exponentially decrease.
+
+```{r lamda_equalto_0}
+Tum_exp <- expression(exp(lamda*t)*c)
+
+c = 50
+lamda=0 #alpha=beta
+t=seq(from=1,to=10,by=0.05)
+
+Tum_exp_vals <- eval(Tum_exp)
+
+plot(Tum_exp_vals,type="l",
+     ylab="Population",
+     xlab="Time",
+     main = "Exponential growth (alpha = beta)",
+     col="blue",
+     lwd = 2, cex = 1.5)
+
+```
+
+
+```{r lamda_greaterthan_0}
+Tum_exp <- expression(exp(lamda*t)*c)
+
+c = 50
+lamda=1 #alpha>beta
+t=seq(from=1,to=10,by=0.05)
+
+Tum_exp_vals <- eval(Tum_exp)
+
+plot(Tum_exp_vals,type="l",
+     ylab="Population",
+     xlab="Time",
+     main = "Exponential growth (alpha > beta)",
+     col="blue",
+     lwd = 2, cex = 1.5)
+```
+
+```{r lamda_lessthan_0}
+Tum_exp <- expression(exp(lamda*t)*c)
+
+c = 50
+lamda=-1 #alpha<beta
+t=seq(from=1,to=10,by=0.05)
+
+Tum_exp_vals <- eval(Tum_exp)
+
+plot(Tum_exp_vals,type="l",
+     ylab="Population",
+     xlab="Time",
+     main = "Exponential growth (alpha < beta)",
+     col="blue",
+     lwd = 2, cex = 1.5)
+```
+
+
+<font size = "5"> Logistic growth </font>
+
+Logistic growth:
+This type of growth will increase initially and then it plateaus at it reaches the carrying capacity. This type of growth  take into account what happens when the cancer growth in vivo.
+
+```{r logistic growth}
+delta_c = expression(lamda*(1-c/k)*c)
+lamda<-1         #Growth rate
+k<-1000          #Carrying capacity
+c<-seq(0,1000)   #Cancer cells
+
+LogMod <- function (time, y, parms) {
+  with(as.list(c(y, parms)), {
+    dc <-   lamda * c * (1 - c / K)
+    list(c(dc))
+  })
+}
+
+#Define Parameters
+y0     <- c(c = 1000 )
+parms  <- c(lamda = 1, K = 10000)
+parms1  <- c(lamda = 0.75, K = 10000)
+parms2  <- c(lamda = 0.5, K = 10000)
+times  <- seq(1, 20, 0.1)
+
+tum_logistic <- ode(y0, times, LogMod, parms) 
+tum_logistic1 <- ode(y0, times, LogMod, parms1) 
+tum_logistic2 <- ode(y0, times, LogMod, parms2) 
+
+# Plot the graph
+plot(tum_logistic,type="l",
+     ylab="Cancer cell Population",
+     xlab="Time",
+     main = "Logistic growth ",
+     col="navy", ylim =c(0,10000),
+     lwd = 2, cex = 1.5)
+lines(tum_logistic1,type="l",
+      col="cyan",
+      lwd = 2, cex = 1.5)
+lines(tum_logistic2,type="l",
+      col="lightblue",
+      lwd = 2, cex = 1.5)
+legend(x = 15, y=6000,legend = c("lamda=1", "lamda=0.75", "lamda =0.5"),
+text.col = c("navy","cyan","lightblue"))
+
+```
+
+
+<font size = "5">Gompterz Growth </font>
+
+Gompterz growth:
+This type of growth is very similar to the logistic growth and the difference is in the sharpness of growth when it moves towards K(carrying capacity). By looking at the Gompterz growth function it can be said that it is the negative growth of the cancer cells. Fr small population the growth is accelerating but as we move to large populations the growth decelerates. This type of growth is mostly sigmoidal.
+
+Gompterz growth is mostly used to detect the initial stage tumor in patients. Mostly in breast cancer patients to initially diagnose the condition of tumor and to plan the therapy. Based on this model one can incorporate different elements of tumor microenvironment and see the interactions between cancer cells and tumor micro-enviornment.
+
+
+```{r}
+delta_c = expression(-lamda * c *log(c/K))
+
+LogMod <- function (time, y, parms) {
+  with(as.list(c(y, parms)), {
+    dc <-   -lamda * c  *log(c/K)
+    list(c(dc))
+  })
+}
+y0     <- c(c = 1000)
+parms  <- c(lamda = 1, K = 10000)
+parms1  <- c(lamda = 0.75, K = 10000)
+parms2  <- c(lamda = 0.5, K = 10000)
+times  <- seq(1, 20, 0.1)
+gompterz <- ode(y0, times, LogMod, parms)
+gompterz1 <- ode(y0, times, LogMod, parms1)
+gompterz2 <- ode(y0, times, LogMod, parms2)
+
+# Plot the graph
+plot(gompterz,type="l",
+     ylab="Cancer cell Population",
+     xlab="Time",
+     main = "Gompterz growth ",
+     col="navy", ylim =c(0,10000),
+     xaxs = "i" , yaxs = "i",
+     lwd = 2, cex = 1.5)
+lines(gompterz1,type="l",
+      col="cyan",
+      lwd = 2, cex = 1.5)
+lines(gompterz2,type="l",
+      col="lightblue",
+      lwd = 2, cex = 1.5)
+legend(x = 10, y=6000,legend = c("lamda=1", "lamda=0.75", "lamda =0.5"),
+text.col = c("navy","cyan","lightblue"))
+
+
+```
+
+<font size = "5">Gompterz Growth with Anti-Tumor Treatment </font>
+
+This model shows how the growth of cancer cells is affected when patient with cancer cells having gompterz growth is subjected to anti-tumorogenic agent. 
+
+```{r}
+delta_c = expression(-lamda * c *log(c/K) - gamma * c)
+LogMod <- function (time, y, parms) {
+  with(as.list(c(y, parms)), {
+    dc <-   -lamda * c  *log(c/K) - gamma * c
+    list(c(dc))
+  })
+}
+y0     <- c(c = 2)
+parms  <- c(lamda = 1, K = 10000, gamma = 0.5)
+times  <- seq(1, 20, 0.1)
+Tum_tt <- ode(y0, times, LogMod, parms) 
+# Plot the graph
+plot(Tum_tt,type="l",
+     ylab="Cancer cell Population",
+     xlab="Time",
+     main = "Gompterz growth w/ anti-tumor therapy ",
+     col="navy",
+     lwd = 2, cex = 1.5,
+     xaxs ="i", yaxs= "i",
+     ylim = c(0,10000))
+```
+
+Looking at the graph, it can inferred that there is significant decrease in the size of the tumor. During the gompterz growth it can be said that tumor size was of 1000 cells but after subjecting it to anti-tumorogenic agent the tumor size decreased till 6000 cells.
+
+<font size = "7">Two equation model </font>
+
+The two equation model incorporates the interaction of cancer cell with immune cells. This makes cancer growth model to be more complex. Immune cells are the host defense mechanism against any infection or any foreign or unwanted thing in body. So immune cells try to fight the cancer cells. When cancer cells grow it releases certain chemicals that trigger the immune cells. The immune effector cells then try and control the tumor growth. In this process, it can be said that immune cells are predator and tumor cells are the prey. Thus making their interactions predator-prey type.
+
+In this two equation model dc represents the size or density of cancer population and di for immune cell population. 
+For first equation, the term:
+"(a(1-B * c))"  referrs to the growth of the cancer cells
+c*i = death of cancer cells due to predation by immune cells
+
+So the term dc explains the growth of the cancer cells minus the cells that are the lost due to predation by immmune cells
+
+For the second equation:
+theta * c*i/(g+c) = growth term for immune cells
+m*c*i = death of immune cells
+i* d = apoptosis(cell death)
+s = continuous production of the immune cells. This term can be constant or changes with respect to therapy
+
+
+```{r predator_prey}
+dc = expression(c * (a(1-B * c)) -  c * i)
+di = expression((theta * c*i/(g+c)) - m*c*i - i* d + s)
+
+dc <- simplify(ysym(dc))
+dc
+di <- simplify(ysym(di))
+di
+
+
+LogMod <- function (time, y, parms) {
+  with(as.list(c(y, parms)), {
+    dc <- expression(c*a*(1-B*c)-c*i)
+    di <- expression((theta*c*i+c*s-(c*i*d+c*i*g*m)-c^2*i*m+g*s-i*g*d)/(c+g))
+    dc <- eval(dc)
+    di <- eval(di)
+   
+    list(c(dc,di))
+  })
+}
+
+y0     <- c(c = 50,            #Cancer cells
+            i = 50 )           #Immune cells
+parms  <- c(a = 1.636,         #cell proliferation
+            B = 2*10^-3,       #cancer cells death
+            theta = 1.131,     #part of immune growth term
+            g = 20.19,         #part of immune growth term
+            m = 0.00311,       #death immune cells due to interaction with cancer cells
+            d = 0.1908,        #apoptosis(cell death)
+            s = 0.318)        #Production of immune cells / time dependent treatment
+times  <- seq(1, 20, 0.1)
+out2 <- ode(y0, times, LogMod, parms) 
+plot(out2[,2],type="l",
+     lwd=2,
+     col="blue", 
+     ylab = "Population size of cells", 
+     xlab = "time", 
+     main = "Growth of cancer cells in presence of immune cells")
+lines(out2[,3],type="l",
+      lwd=2,
+      col="green")
+legend(x = 100, y=40,legend = c("immune_growth", "cancer_growth"),
+text.col = c("green","blue"))
+
+
+y0     <- c(c = 50, i = 300 )
+parms  <- c(a = 1.636,B = 4*10^-3,theta = 1.131,g = 20.19,m = 0.00311,d = 2.0,s = 0.1181)
+times  <- seq(1, 20, 0.1)
+out2 <- ode(y0, times, LogMod, parms)
+plot(out2[,3],type="l",lwd=2,col="green", ylab = "Population size of cells", xlab = "time", main = "Growth of cancer cells in presence of immune cells")
+
+y0     <- c(c = 50, i = 5 )
+parms  <- c(a = 1.636,B = 4*10^-3,theta = 1.131,g = 20.19,m = 0.00311,d = 2.0,s = 0.1181)
+times  <- seq(1, 20, 0.1)
+out2 <- ode(y0, times, LogMod, parms) 
+lines(out2[,2],type="l",lwd=2,col="blue")
+legend(x = 100, y=150,legend = c("immune_growth", "cancer_growth"),
+text.col = c("green","blue"))
+```
+
+For both the graphs, I used the value from the paper[1]. In graph 1, amount of cance and immune cells are same. When cancer cells interact with immune cells then there is sharp decrease in the tumor size whcih makes sense as body is tring to fight hard from the beginning to stop the growth of cancer any further.
+
+In the graph 2, I changed the values of B, d and i. It can be inferred from the graph that at first there is small dip in the tumor growth as immune cells were more. But after increasing the value of d,immune cells decays and right after that tumor grows again.
+
+So if I decrease value of s and increase the value of d even more then I would be able to see the oscillatory pattern which demonstrates that the tumor size grows in oscillatory pattern. Tumor size increase when immune cells decays but when tumor grows again, the immune cells again start acting up and the cycle continues.
+
+<font size = "5"> Stability analysis </font>
+
+So tried to do the stability analysis for the above equations. I tried to solve it symbolically and found out the equilibrium. Later,I wanted to see if the equilibrium is stable or not as it will provide confirmation for the above analysis. I even tried to find the eigenvalues of the equation. I found out that eigenvalue is 1 which means its a unstable focus. This means that cancer cells will grow uncontrollably. When plotted the graph it will show the multiple oscillations. To be specific the cancer cells will grow when the immune cells decays but as immune cells increases, the tumor cell will start to decrease. This will create multiple osciallitions.
+
+
+```{r}
+dc <- expression(c*a*(1-B*c)-c*i)
+di <- expression((theta*c*i+c*s-(c*i*d+c*i*g*m)-c^2*i*m+g*s-i*g*d)/(c+g))
+
+dc_prime = "(c*a*(1-B*c)-c*i)"
+dc_prime <- ysym(dc_prime)
+#Get the equilibria (i.e. the roots)
+dc_hat1<-simplify(solve(dc_prime,'c')) 
+dc_hat1
+
+di_prime <- "(gamma*c*i+c*s-(c*i*d+c*i*g*m)-c^2*i*m+g*s-i*g*d)/(c+g)"
+di_prime <- ysym(di_prime)
+di_hat1 <- simplify(solve(di_prime,'i'))
+di_hat1
+
+n1 = dc_hat1
+n2 = di_hat1
+jac <- matrix(c(eval(D(dc,"n1")),eval(D(dc,"n2")),eval(D(di,"n1")),eval(D(di,"n2"))),nrow=2,byrow=TRUE)
+lambda=eigen(jac)
+lamda
+
+```
+
+
+Conclusion:
+One equation model, models the growth of the tumor cells and explains very well how to predict the tumor growth patterns based on their single cell - cell interactions. One equation models can used in studies to classify the tumor growth based on their
+growth rate. It can also be used during planning of treatment for the patient. The model where treatment was incorporated, there are many factors that can play role in the treatment term. The model provides the basic idea of how the tumor size decreases when subjected to anti-tumor treatment. You can also compare the potentcy or effectiveness of the treatment by adding the term "s" in gamma*c. With change in s you can plan effectively which treatment is best suited for certain patient. To make it further clear, the models are density dependent.
+
+Furthermore, two system model includes 1 more entity which has negative effect on the growth of tumor cells. By applying the two system model we can understand more precisely how tumor is interacting with immune cells and how much strength of anti-tumor agent is required to just effect the tumor cells or aid the immune cells in decreasing the growth rate of cancer cells.
+
+Future directions:
+
+It would be very interesting to see how cancer spreads.In theory, cancer spreads through blood vessels, lymphatics vessels. The vessels lining are made up of endothelial cells. It would be very interesting to model how cancer cell proliferates and invades into blood vessels. The process through which the cancer cells spreads is through diffusion and it also attacks the lining of vessel - degrading it.
+
+References:
+
+1 . Bull Math Biol (2011) 73:Interactions Between the Immune System and Cancer: A Brief Review of Non-spatial Mathematical Models, 2–32 DOI 10.1007/s11538-010-9526-3
+
+2. http://www.mcs.st-andrews.ac.uk/~majc/enderling_chaplain2014.pdf
+
+3. https://www.dfmf.uned.es/medphys/files/sdarticle-33.pdf
